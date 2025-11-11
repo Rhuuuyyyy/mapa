@@ -154,3 +154,15 @@ async def delete_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete your own account"
+        )
+    
+    db.delete(user)
+    db.commit()
+    
+    return None
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_admin_info(current_admin: User = Depends(get_current_admin)):
+    """Obter informações do admin logado"""
+    return current_admin
