@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - MAPA SaaS{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <header class="dashboard-header">
+        <h1>Meus Relatórios MAPA</h1>
+        <div class="header-actions">
+            <span id="userName">Carregando...</span>
+            <button onclick="logout()" class="btn btn-secondary">Sair</button>
+        </div>
+    </header>
+    
+    <div class="dashboard-content">
+        <div class="upload-section">
+            <h2>Upload de XML NF-e</h2>
+            <div class="upload-box">
+                <form id="uploadForm">
+                    <input type="file" id="xmlFile" accept=".xml" required>
+                    <button type="submit" class="btn btn-primary">Enviar XML</button>
+                </form>
+                <div id="uploadStatus" class="status-message" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="uploads-section">
+            <h2>Arquivos Enviados</h2>
+            <table id="uploadsTable">
+                <thead>
+                    <tr>
+                        <th>Arquivo</th>
+                        <th>Data de Upload</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="uploadsTableBody">
+                    <tr>
+                        <td colspan="4" class="loading">Carregando uploads...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="reports-section">
+            <h2>Relatórios Gerados</h2>
+            <table id="reportsTable">
+                <thead>
+                    <tr>
+                        <th>Período</th>
+                        <th>Data de Geração</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTableBody">
+                    <tr>
+                        <td colspan="3" class="loading">Carregando relatórios...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/user.js"></script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Login - MAPA SaaS{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <h1>MAPA SaaS</h1>
+        <p class="subtitle">Automação de Relatórios Trimestrais</p>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
+            <button type="submit" class="btn btn-primary">Entrar</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('errorMessage');
+    
+    try {
+        const response = await fetch('/api/admin/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.detail || 'Login falhou');
+        }
+        
+        // Salvar token
+        localStorage.setItem('access_token', data.access_token);
+        
+        // Verificar se é admin
+        const userResponse = await fetch('/api/admin/me', {
+            headers: {
+                'Authorization': `Bearer ${data.access_token}`
+            }
+        });
+        
+        if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.is_admin) {
+                window.location.href = '/admin';
+            } else {
+                window.location.href = '/dashboard';
+            }
+        } else {
+            // Se falhar como admin, tentar como usuário
+            window.location.href = '/dashboard';
+        }
+        
+    } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
