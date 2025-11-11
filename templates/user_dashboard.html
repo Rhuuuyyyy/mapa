@@ -5,31 +5,96 @@
 {% block content %}
 <div class="dashboard">
     <header class="dashboard-header">
-        <h1>Meus Relatórios MAPA</h1>
+        <h1>📊 Meus Relatórios MAPA</h1>
         <div class="header-actions">
-            <span id="userName">Carregando...</span>
+            <span class="user-badge" id="userName">Carregando...</span>
             <button onclick="logout()" class="btn btn-secondary">Sair</button>
         </div>
     </header>
     
     <div class="dashboard-content">
+        <!-- Info Cards -->
+        <div class="info-cards">
+            <div class="info-card">
+                <div class="info-card-header">
+                    <span class="info-card-icon">📄</span>
+                    <h3>Upload de NF-e</h3>
+                </div>
+                <p>Faça upload de suas Notas Fiscais Eletrônicas nos formatos XML ou PDF (DANFE) para processamento automático.</p>
+                <ul>
+                    <li>✅ Suporta XML de NF-e</li>
+                    <li>✅ Suporta PDF da DANFE</li>
+                    <li>✅ Extração automática de dados</li>
+                </ul>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-card-header">
+                    <span class="info-card-icon">⚙️</span>
+                    <h3>Processamento</h3>
+                </div>
+                <p>Os arquivos são processados automaticamente após o upload, extraindo todas as informações relevantes.</p>
+                <ul>
+                    <li>📦 Dados do produto e garantias</li>
+                    <li>🏢 Emitente e destinatário</li>
+                    <li>💰 Valores e quantidades</li>
+                </ul>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-card-header">
+                    <span class="info-card-icon">📊</span>
+                    <h3>Relatório MAPA</h3>
+                </div>
+                <p>Gere o relatório trimestral no formato oficial do MAPA com um clique.</p>
+                <ul>
+                    <li>📋 Formato padrão MAPA</li>
+                    <li>📥 Download em Excel (.xlsx)</li>
+                    <li>✅ Pronto para envio</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Upload Section -->
         <div class="upload-section">
-            <h2>Upload de XML NF-e</h2>
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">📤</span>
+                    <h2>Upload de NF-e</h2>
+                </div>
+            </div>
+            
             <div class="upload-box">
+                <span class="upload-icon">📄</span>
+                <h3>Arraste ou selecione seus arquivos</h3>
+                <p>Aceita arquivos XML ou PDF de Nota Fiscal Eletrônica</p>
                 <form id="uploadForm">
-                    <input type="file" id="xmlFile" accept=".xml" required>
-                    <button type="submit" class="btn btn-primary">Enviar XML</button>
+                    <input type="file" id="xmlFile" accept=".xml,.pdf" required>
+                    <button type="submit" class="btn btn-primary">
+                        <span>📤</span> Enviar Arquivo
+                    </button>
                 </form>
                 <div id="uploadStatus" class="status-message" style="display: none;"></div>
             </div>
         </div>
         
+        <!-- Uploads Section -->
         <div class="uploads-section">
-            <h2>Arquivos Enviados</h2>
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">📋</span>
+                    <h2>Arquivos Enviados</h2>
+                </div>
+                <div>
+                    <span id="uploadCount" class="badge badge-primary">0 arquivos</span>
+                </div>
+            </div>
+            
             <table id="uploadsTable">
                 <thead>
                     <tr>
                         <th>Arquivo</th>
+                        <th>Tipo</th>
                         <th>Data de Upload</th>
                         <th>Status</th>
                         <th>Ações</th>
@@ -37,14 +102,67 @@
                 </thead>
                 <tbody id="uploadsTableBody">
                     <tr>
-                        <td colspan="4" class="loading">Carregando uploads...</td>
+                        <td colspan="5" class="loading">
+                            <div class="spinner"></div> Carregando uploads...
+                        </td>
                     </tr>
                 </tbody>
             </table>
         </div>
         
+        <!-- Generate Report Section -->
+        <div class="upload-section" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);">
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">🎯</span>
+                    <h2>Gerar Relatório Trimestral MAPA</h2>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <span class="alert-icon">ℹ️</span>
+                <div class="alert-content">
+                    <h4>Como gerar o relatório</h4>
+                    <p>Selecione o trimestre desejado e clique em "Gerar Relatório". O sistema irá processar todos os arquivos enviados e criar o relatório no formato oficial do MAPA.</p>
+                </div>
+            </div>
+            
+            <form id="generateReportForm" style="max-width: 500px; margin: 20px auto;">
+                <div class="form-group">
+                    <label for="reportPeriod">Selecione o Trimestre</label>
+                    <select id="reportPeriod" required style="width: 100%; padding: 14px; border: 2px solid var(--border-color); border-radius: 12px; font-size: 15px; background: white;">
+                        <option value="">-- Selecione --</option>
+                        <option value="Q1-2025">1º Trimestre 2025 (Jan-Mar)</option>
+                        <option value="Q2-2025">2º Trimestre 2025 (Abr-Jun)</option>
+                        <option value="Q3-2025">3º Trimestre 2025 (Jul-Set)</option>
+                        <option value="Q4-2025">4º Trimestre 2025 (Out-Dez)</option>
+                        <option value="Q1-2024">1º Trimestre 2024 (Jan-Mar)</option>
+                        <option value="Q2-2024">2º Trimestre 2024 (Abr-Jun)</option>
+                        <option value="Q3-2024">3º Trimestre 2024 (Jul-Set)</option>
+                        <option value="Q4-2024">4º Trimestre 2024 (Out-Dez)</option>
+                    </select>
+                </div>
+                
+                <div id="generateStatus" class="status-message" style="display: none;"></div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span>📊</span> Gerar Relatório MAPA
+                </button>
+            </form>
+        </div>
+        
+        <!-- Reports Section -->
         <div class="reports-section">
-            <h2>Relatórios Gerados</h2>
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">📊</span>
+                    <h2>Relatórios Gerados</h2>
+                </div>
+                <div>
+                    <span id="reportCount" class="badge badge-success">0 relatórios</span>
+                </div>
+            </div>
+            
             <table id="reportsTable">
                 <thead>
                     <tr>
@@ -55,7 +173,9 @@
                 </thead>
                 <tbody id="reportsTableBody">
                     <tr>
-                        <td colspan="3" class="loading">Carregando relatórios...</td>
+                        <td colspan="3" class="loading">
+                            <div class="spinner"></div> Carregando relatórios...
+                        </td>
                     </tr>
                 </tbody>
             </table>
