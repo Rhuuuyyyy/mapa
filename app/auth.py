@@ -10,16 +10,38 @@ from .database import get_db
 from .models import User
 from .schemas import TokenData
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+# Configuração do contexto de senha com bcrypt
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12  # Define explicitamente o número de rounds
+)
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/admin/auth/login")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verifica se a senha corresponde ao hash"""
+    try:
+        # Trunca senha se necessário (máximo 72 bytes para bcrypt)
+        if len(plain_password.encode('utf-8')) > 72:
+            plain_password = plain_password[:72]
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        print(f"Erro ao verificar senha: {e}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    """Gera hash da senha"""
+    try:
+        # Trunca senha se necessário (máximo 72 bytes para bcrypt)
+        if len(password.encode('utf-8')) > 72:
+            password = password[:72]
+        return pwd_context.hash(password)
+    except Exception as e:
+        print(f"Erro ao gerar hash: {e}")
+        raise ValueError(f"Erro ao processar senha: {str(e)}")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):

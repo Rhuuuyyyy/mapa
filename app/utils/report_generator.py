@@ -1,7 +1,7 @@
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.utils import get_column_letter
 from typing import List, Dict, Any
 import os
 from datetime import datetime
@@ -96,7 +96,7 @@ class MAPAReportGenerator:
                 
                 row = {
                     # Identificação
-                    'Tipo': 'Fertilizante',  # ou extrair do produto
+                    'Tipo': 'Fertilizante',
                     'N_REGISTRO_PRODUTO': registro_mapa,
                     'AUTORIZACAO': '',
                     
@@ -163,20 +163,12 @@ class MAPAReportGenerator:
         if not mapa_data:
             raise ValueError("Nenhum dado para gerar relatório")
         
-        # Create DataFrame
-        df = pd.DataFrame(mapa_data)
-        
-        # Create Excel file
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"Relatorio_MAPA_{self.period}_{timestamp}.xlsx"
-        filepath = os.path.join(self.report_dir, f"user_{self.user.id}_{filename}")
-        
         # Create workbook
         wb = Workbook()
         ws = wb.active
         ws.title = f"Relatório {self.period}"
         
-        # Header styling
+        # Styles
         header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=11)
         header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -188,35 +180,27 @@ class MAPAReportGenerator:
             bottom=Side(style='thin')
         )
         
-        # Title section
-        ws.merge_cells('A1:Z1')
-        title_cell = ws['A1']
-        title_cell.value = "MINISTÉRIO DA AGRICULTURA, PECUÁRIA E ABASTECIMENTO – MAPA"
-        title_cell.font = Font(bold=True, size=14)
-        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        # Title section (não mesclar para evitar erro)
+        ws['A1'] = "MINISTÉRIO DA AGRICULTURA, PECUÁRIA E ABASTECIMENTO – MAPA"
+        ws['A1'].font = Font(bold=True, size=14)
+        ws['A1'].alignment = Alignment(horizontal="center", vertical="center")
         
-        ws.merge_cells('A2:Z2')
-        subtitle_cell = ws['A2']
-        subtitle_cell.value = "COORDENAÇÃO DE FERTILIZANTES, INOCULANTES E CORRETIVOS - CFIC"
-        subtitle_cell.font = Font(bold=True, size=12)
-        subtitle_cell.alignment = Alignment(horizontal="center", vertical="center")
+        ws['A2'] = "COORDENAÇÃO DE FERTILIZANTES, INOCULANTES E CORRETIVOS - CFIC"
+        ws['A2'].font = Font(bold=True, size=12)
+        ws['A2'].alignment = Alignment(horizontal="center", vertical="center")
         
-        ws.merge_cells('A3:Z3')
-        report_title_cell = ws['A3']
-        report_title_cell.value = "Relatório Trimestral de Produção, Importação e Exportação"
-        report_title_cell.font = Font(bold=True, size=12, color="0000FF")
-        report_title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        ws['A3'] = "Relatório Trimestral de Produção, Importação e Exportação"
+        ws['A3'].font = Font(bold=True, size=12, color="0000FF")
+        ws['A3'].alignment = Alignment(horizontal="center", vertical="center")
         
-        # Company info section (row 5)
+        # Company info (row 5-7)
         ws['A5'] = "Estabelecimento:"
         ws['B5'] = self.user.company_name or self.user.full_name
-        
-        ws['P5'] = f"Registro nº:"
-        ws['R5'] = f"UF:"
+        ws['P5'] = "Registro nº:"
+        ws['R5'] = "UF:"
         
         ws['A6'] = "Endereço:"
         ws['P6'] = "CNPJ:"
-        ws['B6'] = ""  # Can be filled from user data
         
         ws['A7'] = "E-Mail:"
         ws['B7'] = self.user.email
@@ -224,15 +208,9 @@ class MAPAReportGenerator:
         ws['R7'] = f"Trimestre: {self.period}"
         ws['T7'] = "Ano:"
         
-        # Merged info cells
-        ws.merge_cells('B5:O5')
-        ws.merge_cells('B6:O6')
-        ws.merge_cells('B7:O7')
-        
-        # Main table headers (row 10)
+        # Headers (row 10)
         current_row = 10
         
-        # Define column headers matching MAPA format
         headers = [
             'Tipo', 'Nº REGISTRO\nDE PRODUTO/\nAUTORIZAÇÃO',
             'N\nTotal', 'N\nSolúb', 'P₂O₅', 'K₂O', 'Ca', 'Mg', 'S', 'B', 'Cl',
@@ -255,13 +233,19 @@ class MAPAReportGenerator:
             cell.font = header_font
             cell.alignment = header_alignment
             cell.border = thin_border
+            
+            # Ajustar largura da coluna
+            col_letter = get_column_letter(col_idx)
+            if col_idx <= 2:
+                ws.column_dimensions[col_letter].width = 15
+            elif col_idx <= 19:
+                ws.column_dimensions[col_letter].width = 8
+            else:
+                ws.column_dimensions[col_letter].width = 12
         
         # Write data rows
         current_row += 1
         for row_data in mapa_data:
-            col_idx = 1
-            
-            # Write each cell
             data_values = [
                 row_data.get('Tipo', ''),
                 row_data.get('N_REGISTRO_PRODUTO', ''),
@@ -298,28 +282,18 @@ class MAPAReportGenerator:
                 row_data.get('Estoque_Final_Trimestre_Quantidade', ''),
             ]
             
-            for value in data_values:
+            for col_idx, value in enumerate(data_values, start=1):
                 cell = ws.cell(row=current_row, column=col_idx, value=value)
                 cell.border = thin_border
                 cell.alignment = Alignment(horizontal="center", vertical="center")
-                col_idx += 1
             
             current_row += 1
         
-        # Adjust column widths
-        for col in ws.columns:
-            max_length = 0
-            column = col[0].column_letter
-            for cell in col:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(cell.value)
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column].width = adjusted_width
-        
         # Save workbook
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"Relatorio_MAPA_{self.period}_{timestamp}.xlsx"
+        filepath = os.path.join(self.report_dir, f"user_{self.user.id}_{filename}")
+        
         wb.save(filepath)
         
         return filepath
