@@ -9,7 +9,8 @@ from ..database import get_db
 from ..models import User, XMLUpload, Report
 from ..schemas import UserResponse, XMLUploadResponse, ReportResponse
 from ..auth import get_current_user
-from ..utils.xml_processor import NFeXMLProcessor
+from ..utils.nfe_processor import NFeProcessor
+from ..utils.mapa_mapper import MAPAMapper
 from ..utils.pdf_processor import NFePDFProcessor
 from ..utils.report_generator import MAPAReportGenerator
 
@@ -91,28 +92,28 @@ def process_nfe_file(upload_id: int, file_path: str, file_type: str, db: Session
     upload = db.query(XMLUpload).filter(XMLUpload.id == upload_id).first()
     if not upload:
         return
-    
+
     try:
         # Process based on file type
         if file_type == 'xml':
-            processor = NFeXMLProcessor(file_path)
+            processor = NFeProcessor(file_path)
         else:  # pdf
             processor = NFePDFProcessor(file_path)
-        
+
         # Validate
         if not processor.validate_nfe():
             raise ValueError("Arquivo não é uma NF-e válida")
-        
-        # Extract data
-        data = processor.process_for_mapa_report()
-        
+
+        # Extract data using new processor
+        data = processor.extract_all_data()
+
         # Store extracted data (you can create a separate table for this if needed)
         # For now, we'll mark as processed
         upload.status = "processed"
         upload.error_message = None
-        
+
         db.commit()
-        
+
     except Exception as e:
         upload.status = "error"
         upload.error_message = f"Erro ao processar: {str(e)}"
@@ -166,20 +167,31 @@ async def generate_mapa_report(
         )
     
     try:
-        # Generate report
-        report_generator = MAPAReportGenerator(current_user, period)
-        
-        # Process all uploads
+        # Create mapper for business logic
+        mapper = MAPAMapper()
+
+        # Process all uploads and add to mapper
         for upload in uploads:
             file_ext = upload.filename.lower().split('.')[-1]
             if file_ext == 'xml':
-                processor = NFeXMLProcessor(upload.file_path)
+                processor = NFeProcessor(upload.file_path)
             else:
                 processor = NFePDFProcessor(upload.file_path)
-            
-            data = processor.process_for_mapa_report()
-            report_generator.add_nfe_data(data)
-        
+
+            # Extract NF-e data using new processor
+            nfe_data = processor.extract_all_data()
+            mapper.add_nfe(nfe_data)
+
+        # Get aggregated MAPA rows
+        mapa_rows = mapper.get_mapa_rows()
+
+        if not mapa_rows:
+            raise ValueError("Nenhum dado foi extraído dos arquivos processados")
+
+        # Generate report with aggregated data
+        report_generator = MAPAReportGenerator(current_user, period)
+        report_generator.add_mapa_rows(mapa_rows)
+
         # Generate Excel file
         report_path = report_generator.generate_excel()
         
