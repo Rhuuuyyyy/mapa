@@ -13,6 +13,47 @@
     </header>
     
     <div class="dashboard-content">
+        <!-- Raw Material Catalog Section -->
+        <div class="catalog-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">📚</span>
+                    <h2>Catálogo Mestre de Matérias-Primas</h2>
+                </div>
+                <div>
+                    <button onclick="showAddCatalogModal()" class="btn btn-success">
+                        <span>➕</span> Adicionar Produto
+                    </button>
+                </div>
+            </div>
+
+            <div class="alert alert-info" style="margin-bottom: 20px;">
+                <span class="alert-icon">ℹ️</span>
+                <div class="alert-content">
+                    <h4>Como funciona o Catálogo</h4>
+                    <p>Mapeie os nomes dos produtos (exatamente como aparecem no XML) para seus números de registro MAPA. Isso garante processamento confiável sem erros de extração automática.</p>
+                </div>
+            </div>
+
+            <table id="catalogTable">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Nome do Produto (XML)</th>
+                        <th style="width: 25%;">Registro MAPA</th>
+                        <th style="width: 25%;">Referência</th>
+                        <th style="width: 10%;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="catalogTableBody">
+                    <tr>
+                        <td colspan="4" class="loading">
+                            <div class="spinner"></div> Carregando catálogo...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- Info Cards -->
         <div class="info-cards">
             <div class="info-card">
@@ -118,15 +159,15 @@
                     <h2>Gerar Relatório Trimestral MAPA</h2>
                 </div>
             </div>
-            
+
             <div class="alert alert-info">
                 <span class="alert-icon">ℹ️</span>
                 <div class="alert-content">
                     <h4>Como gerar o relatório</h4>
-                    <p>Selecione o trimestre desejado e clique em "Gerar Relatório". O sistema irá processar todos os arquivos enviados e criar o relatório no formato oficial do MAPA.</p>
+                    <p>Selecione o trimestre desejado e clique em "Gerar Relatório". O sistema irá processar todos os arquivos enviados e criar uma tabela de resumo para facilitar o preenchimento do relatório MAPA.</p>
                 </div>
             </div>
-            
+
             <form id="generateReportForm" style="max-width: 500px; margin: 20px auto;">
                 <div class="form-group">
                     <label for="reportPeriod">Selecione o Trimestre</label>
@@ -142,43 +183,79 @@
                         <option value="Q4-2024">4º Trimestre 2024 (Out-Dez)</option>
                     </select>
                 </div>
-                
+
                 <div id="generateStatus" class="status-message" style="display: none;"></div>
-                
+
                 <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <span>📊</span> Gerar Relatório MAPA
+                    <span>📊</span> Processar Arquivos
                 </button>
             </form>
-        </div>
-        
-        <!-- Reports Section -->
-        <div class="reports-section">
-            <div class="section-header">
-                <div class="section-title">
-                    <span class="section-icon">📊</span>
-                    <h2>Relatórios Gerados</h2>
+
+            <!-- Report Results Section -->
+            <div id="reportResultsSection" style="display: none; margin-top: 30px;">
+                <div class="section-header" style="margin-bottom: 20px;">
+                    <div class="section-title">
+                        <span class="section-icon">📋</span>
+                        <h3>Resultado do Processamento</h3>
+                    </div>
+                    <div>
+                        <button onclick="exportToPDF()" class="btn btn-success">
+                            <span>📄</span> Exportar para PDF
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <span id="reportCount" class="badge badge-success">0 relatórios</span>
+
+                <div class="alert alert-success" style="margin-bottom: 20px;">
+                    <span class="alert-icon">✅</span>
+                    <div class="alert-content">
+                        <p id="reportResultsSummary">Processamento concluído com sucesso!</p>
+                    </div>
+                </div>
+
+                <table id="reportResultsTable" style="margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Registro MAPA</th>
+                            <th style="width: 30%;">Produto (Referência)</th>
+                            <th style="width: 10%;">Unidade</th>
+                            <th style="width: 15%;">Qtd. Importação</th>
+                            <th style="width: 20%;">Qtd. Outras Entradas (Mercado Nacional)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportResultsTableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Unregistered Products Error Section -->
+            <div id="unregisteredProductsSection" style="display: none; margin-top: 30px;">
+                <div class="alert alert-danger">
+                    <span class="alert-icon">⚠️</span>
+                    <div class="alert-content">
+                        <h4>Produtos Não Cadastrados no Catálogo</h4>
+                        <p>Os seguintes produtos foram encontrados nos XMLs mas não estão cadastrados no seu Catálogo de Matérias-Primas. Por favor, adicione-os ao catálogo e processe novamente.</p>
+                    </div>
+                </div>
+
+                <table id="unregisteredProductsTable" style="margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 50%;">Nome do Produto (XML)</th>
+                            <th style="width: 20%;">NF-e</th>
+                            <th style="width: 15%;">Quantidade</th>
+                            <th style="width: 15%;">Unidade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unregisteredProductsTableBody">
+                    </tbody>
+                </table>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="showAddCatalogModal()" class="btn btn-success">
+                        <span>➕</span> Adicionar Produtos ao Catálogo
+                    </button>
                 </div>
             </div>
-            
-            <table id="reportsTable">
-                <thead>
-                    <tr>
-                        <th>Período</th>
-                        <th>Data de Geração</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="reportsTableBody">
-                    <tr>
-                        <td colspan="3" class="loading">
-                            <div class="spinner"></div> Carregando relatórios...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
     </div>
 </div>

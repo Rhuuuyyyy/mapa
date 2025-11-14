@@ -3,11 +3,11 @@ if (!checkAuth()) {
     window.location.href = '/';
 }
 
-// Load user info, uploads and reports on page load
+// Load user info, catalog, and uploads on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadUserInfo();
+    await loadCatalog();
     await loadUploads();
-    await loadReports();
     setupUploadDragDrop();
 });
 
@@ -24,6 +24,237 @@ async function loadUserInfo() {
     } catch (error) {
         console.error('Error loading user info:', error);
         Toast.error('Erro ao carregar informações do usuário');
+    }
+}
+
+// ============================================================================
+// CATALOG MANAGEMENT FUNCTIONS
+// ============================================================================
+
+async function loadCatalog() {
+    const tbody = document.getElementById('catalogTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" class="loading"><div class="spinner"></div> Carregando catálogo...</td></tr>';
+
+    try {
+        const response = await fetchAPI('/api/user/catalog');
+        if (response && response.ok) {
+            const entries = await response.json();
+
+            if (entries.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <div class="empty-state-icon">📚</div>
+                            <p>Nenhum produto cadastrado ainda. Clique em "Adicionar Produto" para começar!</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = entries.map(entry => {
+                const safeProductName = escapeHtml(entry.product_name);
+                const safeMapaReg = escapeHtml(entry.mapa_registration);
+                const safeReference = escapeHtml(entry.product_reference || '-');
+
+                return `
+                    <tr>
+                        <td style="font-weight: 500;">${safeProductName}</td>
+                        <td><span class="badge badge-primary">${safeMapaReg}</span></td>
+                        <td style="font-size: 14px; color: #666;">${safeReference}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button onclick="showEditCatalogModal(${entry.id}, '${entry.product_name.replace(/'/g, "\\'")}', '${entry.mapa_registration.replace(/'/g, "\\'")}', '${(entry.product_reference || '').replace(/'/g, "\\'")}')" class="btn btn-secondary" title="Editar" style="padding: 6px 12px;">
+                                    ✏️
+                                </button>
+                                <button onclick="deleteCatalogEntry(${entry.id}, '${entry.product_name.replace(/'/g, "\\'")} ')" class="btn btn-danger" title="Excluir" style="padding: 6px 12px;">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Error loading catalog:', error);
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="empty-state-icon">❌</div><p>Erro ao carregar catálogo</p></td></tr>';
+        Toast.error('Erro ao carregar catálogo');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function showAddCatalogModal() {
+    const formHtml = `
+        <div class="modal-form">
+            <div class="form-group">
+                <label for="catalogProductName">Nome do Produto (exato do XML)</label>
+                <input type="text" id="catalogProductName" class="form-input" required
+                    placeholder="Ex: CLORETO DE POTASSIO GRANULADO">
+            </div>
+            <div class="form-group">
+                <label for="catalogMapaReg">Número de Registro MAPA</label>
+                <input type="text" id="catalogMapaReg" class="form-input" required
+                    placeholder="Ex: RS-003295-9.000007">
+            </div>
+            <div class="form-group">
+                <label for="catalogReference">Referência (opcional)</label>
+                <input type="text" id="catalogReference" class="form-input"
+                    placeholder="Nota ou referência adicional">
+            </div>
+        </div>
+    `;
+
+    const confirmed = await showFormModal({
+        title: 'Adicionar Produto ao Catálogo',
+        content: formHtml,
+        confirmText: 'Adicionar',
+        cancelText: 'Cancelar'
+    });
+
+    if (confirmed) {
+        const productName = document.getElementById('catalogProductName').value.trim();
+        const mapaReg = document.getElementById('catalogMapaReg').value.trim();
+        const reference = document.getElementById('catalogReference').value.trim();
+
+        if (!productName || !mapaReg) {
+            Toast.error('Preencha os campos obrigatórios');
+            return;
+        }
+
+        await createCatalogEntry(productName, mapaReg, reference);
+    }
+}
+
+async function showEditCatalogModal(entryId, productName, mapaReg, reference) {
+    const formHtml = `
+        <div class="modal-form">
+            <div class="form-group">
+                <label for="catalogProductName">Nome do Produto (exato do XML)</label>
+                <input type="text" id="catalogProductName" class="form-input" required
+                    value="${escapeHtml(productName)}">
+            </div>
+            <div class="form-group">
+                <label for="catalogMapaReg">Número de Registro MAPA</label>
+                <input type="text" id="catalogMapaReg" class="form-input" required
+                    value="${escapeHtml(mapaReg)}">
+            </div>
+            <div class="form-group">
+                <label for="catalogReference">Referência (opcional)</label>
+                <input type="text" id="catalogReference" class="form-input"
+                    value="${escapeHtml(reference)}">
+            </div>
+        </div>
+    `;
+
+    const confirmed = await showFormModal({
+        title: 'Editar Produto do Catálogo',
+        content: formHtml,
+        confirmText: 'Salvar',
+        cancelText: 'Cancelar'
+    });
+
+    if (confirmed) {
+        const newProductName = document.getElementById('catalogProductName').value.trim();
+        const newMapaReg = document.getElementById('catalogMapaReg').value.trim();
+        const newReference = document.getElementById('catalogReference').value.trim();
+
+        if (!newProductName || !newMapaReg) {
+            Toast.error('Preencha os campos obrigatórios');
+            return;
+        }
+
+        await updateCatalogEntry(entryId, newProductName, newMapaReg, newReference);
+    }
+}
+
+async function createCatalogEntry(productName, mapaRegistration, reference) {
+    try {
+        const response = await fetchAPI('/api/user/catalog', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                product_name: productName,
+                mapa_registration: mapaRegistration,
+                product_reference: reference || null
+            })
+        });
+
+        if (response && response.ok) {
+            Toast.success('Produto adicionado ao catálogo com sucesso!');
+            await loadCatalog();
+        } else {
+            const error = await response.json();
+            Toast.error(error.detail || 'Erro ao adicionar produto');
+        }
+    } catch (error) {
+        console.error('Error creating catalog entry:', error);
+        Toast.error('Erro ao adicionar produto ao catálogo');
+    }
+}
+
+async function updateCatalogEntry(entryId, productName, mapaRegistration, reference) {
+    try {
+        const response = await fetchAPI(`/api/user/catalog/${entryId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                product_name: productName,
+                mapa_registration: mapaRegistration,
+                product_reference: reference || null
+            })
+        });
+
+        if (response && response.ok) {
+            Toast.success('Produto atualizado com sucesso!');
+            await loadCatalog();
+        } else {
+            const error = await response.json();
+            Toast.error(error.detail || 'Erro ao atualizar produto');
+        }
+    } catch (error) {
+        console.error('Error updating catalog entry:', error);
+        Toast.error('Erro ao atualizar produto');
+    }
+}
+
+async function deleteCatalogEntry(entryId, productName) {
+    const confirmed = await showConfirmModal({
+        title: 'Excluir Produto do Catálogo',
+        message: `Tem certeza que deseja excluir "${productName}" do catálogo?\n\nEsta ação não pode ser desfeita.`,
+        confirmText: 'Sim, excluir',
+        cancelText: 'Cancelar',
+        type: 'danger'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetchAPI(`/api/user/catalog/${entryId}`, {
+            method: 'DELETE'
+        });
+
+        if (response && response.ok) {
+            Toast.success('Produto excluído do catálogo com sucesso!');
+            await loadCatalog();
+        } else {
+            const error = await response.json();
+            Toast.error(error.detail || 'Erro ao excluir produto');
+        }
+    } catch (error) {
+        console.error('Error deleting catalog entry:', error);
+        Toast.error('Erro ao excluir produto do catálogo');
     }
 }
 
@@ -241,6 +472,10 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     }
 });
 
+// Store current report data globally for PDF export
+let currentReportData = null;
+let currentReportPeriod = null;
+
 // Generate Report Form Handler
 document.getElementById('generateReportForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -253,6 +488,10 @@ document.getElementById('generateReportForm').addEventListener('submit', async (
         return;
     }
 
+    // Hide any previous results
+    document.getElementById('reportResultsSection').style.display = 'none';
+    document.getElementById('unregisteredProductsSection').style.display = 'none';
+
     // Disable button
     setButtonLoading(submitButton, true);
 
@@ -263,26 +502,177 @@ document.getElementById('generateReportForm').addEventListener('submit', async (
 
         if (response && response.ok) {
             const result = await response.json();
-            Toast.success(`Relatório gerado com sucesso! ${result.total_nfes} NF-e(s) processada(s).`, 6000);
 
-            // Reset form
-            document.getElementById('reportPeriod').value = '';
-
-            // Reload reports
-            setTimeout(async () => {
-                await loadReports();
-            }, 1000);
+            if (result.success) {
+                // Success - display results table
+                displayReportResults(result, period);
+                Toast.success(`Processamento concluído! ${result.total_nfes} NF-e(s) processada(s).`, 6000);
+            }
         } else {
             const error = await response.json();
-            Toast.error(error.detail || 'Erro ao gerar relatório');
+
+            // Check if it's an unregistered products error
+            if (error.detail && error.detail.unregistered_products) {
+                displayUnregisteredProducts(error.detail.unregistered_products);
+                Toast.error('Existem produtos não cadastrados no catálogo. Veja a lista abaixo.', 8000);
+            } else {
+                Toast.error(error.detail || 'Erro ao processar arquivos');
+            }
         }
     } catch (error) {
         console.error('Error generating report:', error);
-        Toast.error('Erro ao gerar relatório. Tente novamente.');
+        Toast.error('Erro ao processar arquivos. Tente novamente.');
     } finally {
         setButtonLoading(submitButton, false);
     }
 });
+
+function displayReportResults(result, period) {
+    currentReportData = result;
+    currentReportPeriod = period;
+
+    // Show results section
+    const resultsSection = document.getElementById('reportResultsSection');
+    resultsSection.style.display = 'block';
+
+    // Update summary
+    const summary = document.getElementById('reportResultsSummary');
+    summary.textContent = `Processadas ${result.total_nfes} NF-e(s) do período ${period}. Total de ${result.rows.length} produto(s) agregado(s).`;
+
+    // Populate table
+    const tbody = document.getElementById('reportResultsTableBody');
+    tbody.innerHTML = result.rows.map(row => `
+        <tr>
+            <td><strong>${escapeHtml(row.mapa_registration)}</strong></td>
+            <td style="font-size: 14px;">${escapeHtml(row.product_reference)}</td>
+            <td>${escapeHtml(row.unit)}</td>
+            <td style="text-align: right; font-weight: 500;">${formatNumber(row.quantity_import)}</td>
+            <td style="text-align: right; font-weight: 500;">${formatNumber(row.quantity_domestic)}</td>
+        </tr>
+    `).join('');
+
+    // Scroll to results
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function displayUnregisteredProducts(unregisteredProducts) {
+    // Show unregistered products section
+    const errorSection = document.getElementById('unregisteredProductsSection');
+    errorSection.style.display = 'block';
+
+    // Populate table
+    const tbody = document.getElementById('unregisteredProductsTableBody');
+    tbody.innerHTML = unregisteredProducts.map(product => `
+        <tr>
+            <td><strong>${escapeHtml(product.product_name)}</strong></td>
+            <td>${escapeHtml(product.nfe_number)}</td>
+            <td style="text-align: right;">${formatNumber(product.quantity)}</td>
+            <td>${escapeHtml(product.unit)}</td>
+        </tr>
+    `).join('');
+
+    // Scroll to error section
+    errorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function formatNumber(value) {
+    // Format number with 2 decimal places and thousand separators
+    const num = parseFloat(value);
+    if (isNaN(num)) return '0,00';
+
+    return num.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+async function exportToPDF() {
+    if (!currentReportData) {
+        Toast.error('Nenhum relatório para exportar');
+        return;
+    }
+
+    Toast.info('Gerando PDF...');
+
+    try {
+        // Use window.print() with custom CSS for PDF generation
+        const printWindow = window.open('', '_blank');
+        const tableHtml = generatePrintableTable(currentReportData, currentReportPeriod);
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Relatório MAPA - ${currentReportPeriod}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    h1 { font-size: 18px; margin-bottom: 10px; text-align: center; }
+                    .info { font-size: 12px; margin-bottom: 20px; text-align: center; color: #666; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th { background-color: #f0f0f0; font-size: 12px; font-weight: bold; padding: 8px; border: 1px solid #ccc; text-align: left; }
+                    td { font-size: 11px; padding: 6px; border: 1px solid #ccc; }
+                    .text-right { text-align: right; }
+                    @media print {
+                        body { padding: 10px; }
+                        h1 { font-size: 16px; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${tableHtml}
+                <div class="no-print" style="margin-top: 20px; text-align: center;">
+                    <button onclick="window.print()" style="padding: 10px 20px; font-size: 14px; cursor: pointer;">Imprimir / Salvar PDF</button>
+                    <button onclick="window.close()" style="padding: 10px 20px; font-size: 14px; cursor: pointer; margin-left: 10px;">Fechar</button>
+                </div>
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        Toast.success('PDF aberto em nova aba');
+    } catch (error) {
+        console.error('Error exporting PDF:', error);
+        Toast.error('Erro ao gerar PDF');
+    }
+}
+
+function generatePrintableTable(data, period) {
+    const rows = data.rows.map(row => `
+        <tr>
+            <td><strong>${escapeHtml(row.mapa_registration)}</strong></td>
+            <td>${escapeHtml(row.product_reference)}</td>
+            <td style="text-align: center;">${escapeHtml(row.unit)}</td>
+            <td class="text-right">${formatNumber(row.quantity_import)}</td>
+            <td class="text-right">${formatNumber(row.quantity_domestic)}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <h1>Relatório MAPA - Matérias-Primas</h1>
+        <div class="info">
+            <p>Período: ${escapeHtml(period)}</p>
+            <p>Total de NF-e(s) processadas: ${data.total_nfes}</p>
+            <p>Data de geração: ${new Date().toLocaleDateString('pt-BR')}</p>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Registro MAPA</th>
+                    <th style="width: 30%;">Produto (Referência)</th>
+                    <th style="width: 10%; text-align: center;">Unidade</th>
+                    <th style="width: 15%; text-align: right;">Qtd. Importação</th>
+                    <th style="width: 20%; text-align: right;">Qtd. Outras Entradas</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+    `;
+}
 
 async function deleteUpload(uploadId, filename) {
     const confirmed = await showConfirmModal({

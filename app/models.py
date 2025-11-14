@@ -40,14 +40,35 @@ class XMLUpload(Base):
 
 class Report(Base):
     __tablename__ = "reports"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     xml_upload_id = Column(Integer, ForeignKey("xml_uploads.id", ondelete="CASCADE"), nullable=False)
     report_period = Column(String(50))  # Ex: "Q1-2024"
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
     file_path = Column(String(500), nullable=False)
-    
+
     # Relationships
     user = relationship("User", back_populates="reports")
     xml_upload = relationship("XMLUpload", back_populates="report")
+
+
+class RawMaterialCatalog(Base):
+    """
+    Catálogo Mestre de Matérias-Primas (Raw Material Master Catalog).
+
+    Maps product names (from XML <xProd>) to MAPA registration numbers.
+    User-defined mappings to avoid unreliable automatic registration extraction.
+    """
+    __tablename__ = "raw_material_catalog"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    product_name = Column(String(500), nullable=False, index=True)  # Key from XML <xProd>
+    mapa_registration = Column(String(100), nullable=False)  # Value: Full MAPA registration (e.g., RS-003295-9.000007)
+    product_reference = Column(String(500))  # Optional reference/notes for user
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="catalog_entries")

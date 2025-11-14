@@ -6,11 +6,15 @@ import os
 import shutil
 from datetime import datetime
 from ..database import get_db
-from ..models import User, XMLUpload, Report
-from ..schemas import UserResponse, XMLUploadResponse, ReportResponse
+from ..models import User, XMLUpload, Report, RawMaterialCatalog
+from ..schemas import (
+    UserResponse, XMLUploadResponse, ReportResponse,
+    CatalogEntryCreate, CatalogEntryUpdate, CatalogEntryResponse
+)
 from ..auth import get_current_user
 from ..utils.nfe_processor import NFeProcessor
 from ..utils.mapa_mapper import MAPAMapper
+from ..utils.mapa_processor_v2 import MAPAProcessorV2
 from ..utils.pdf_processor import NFePDFProcessor
 from ..utils.report_generator import MAPAReportGenerator
 from ..utils.file_validator import FileValidator
@@ -161,8 +165,11 @@ async def generate_mapa_report(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Gera relatório trimestral MAPA
-    period format: Q1-2025, Q2-2025, Q3-2025, Q4-2025
+    Gera relatório trimestral MAPA usando o novo processador baseado em catálogo.
+
+    Período format: Q1-2025, Q2-2025, Q3-2025, Q4-2025
+
+    Retorna erro se houver produtos não cadastrados no catálogo.
     """
     # Validate period format
     import re
@@ -171,67 +178,86 @@ async def generate_mapa_report(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Formato de período inválido. Use: Q1-2025, Q2-2025, etc."
         )
-    
+
     # Get all processed uploads for the user
     uploads = db.query(XMLUpload).filter(
         XMLUpload.user_id == current_user.id,
         XMLUpload.status == "processed"
     ).all()
-    
+
     if not uploads:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Nenhum arquivo processado encontrado"
         )
-    
-    try:
-        # Create mapper for business logic
-        mapper = MAPAMapper()
 
-        # Process all uploads and add to mapper
+    try:
+        # Initialize new catalog-based processor
+        processor_v2 = MAPAProcessorV2(current_user.id, db)
+
+        # Extract NFe data from all uploads
+        nfe_list = []
         for upload in uploads:
             file_ext = upload.filename.lower().split('.')[-1]
             if file_ext == 'xml':
-                processor = NFeProcessor(upload.file_path)
+                nfe_processor = NFeProcessor(upload.file_path)
             else:
-                processor = NFePDFProcessor(upload.file_path)
+                nfe_processor = NFePDFProcessor(upload.file_path)
 
-            # Extract NF-e data using new processor
-            nfe_data = processor.extract_all_data()
-            mapper.add_nfe(nfe_data)
+            # Extract NF-e data
+            nfe_data = nfe_processor.extract_all_data()
+            nfe_list.append(nfe_data)
 
-        # Get aggregated MAPA rows
-        mapa_rows = mapper.get_mapa_rows()
+        # Process NFes with new catalog-based logic
+        result = processor_v2.process_nfes(nfe_list)
 
-        if not mapa_rows:
+        # Check for unregistered products (ERROR CASE)
+        if not result.success:
+            # Return detailed error with unregistered products list
+            unregistered_list = [
+                {
+                    "product_name": up.product_name,
+                    "nfe_number": up.nfe_number,
+                    "quantity": str(up.quantity),
+                    "unit": up.unit
+                }
+                for up in result.unregistered_products
+            ]
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": result.error_message,
+                    "unregistered_products": unregistered_list
+                }
+            )
+
+        # Success - we have aggregated data
+        if not result.aggregated_rows:
             raise ValueError("Nenhum dado foi extraído dos arquivos processados")
 
-        # Generate report with aggregated data
-        report_generator = MAPAReportGenerator(current_user, period)
-        report_generator.add_mapa_rows(mapa_rows)
-
-        # Generate Excel file
-        report_path = report_generator.generate_excel()
-        
-        # Save report record
-        report = Report(
-            user_id=current_user.id,
-            xml_upload_id=uploads[0].id,  # Link to first upload
-            report_period=period,
-            file_path=report_path
-        )
-        
-        db.add(report)
-        db.commit()
-        db.refresh(report)
-        
+        # Return aggregated data as JSON (for table view + PDF export)
+        # This replaces the old Excel generation approach
         return {
-            "message": "Relatório gerado com sucesso",
-            "report_id": report.id,
+            "success": True,
+            "message": "Relatório processado com sucesso",
             "period": period,
-            "total_nfes": len(uploads)
+            "total_nfes": len(uploads),
+            "rows": [
+                {
+                    "mapa_registration": row.mapa_registration,
+                    "product_reference": row.product_reference,
+                    "unit": row.unit,
+                    "quantity_import": str(row.quantity_import),
+                    "quantity_domestic": str(row.quantity_domestic),
+                    "source_nfes": row.source_nfes
+                }
+                for row in result.aggregated_rows
+            ]
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -328,21 +354,181 @@ async def delete_report(
         Report.id == report_id,
         Report.user_id == current_user.id
     ).first()
-    
+
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Relatório não encontrado"
         )
-    
+
     # Delete physical file
     try:
         if os.path.exists(report.file_path):
             os.remove(report.file_path)
     except Exception as e:
         print(f"Error deleting file: {str(e)}")
-    
+
     db.delete(report)
     db.commit()
-    
+
     return None
+
+
+# ============================================================================
+# RAW MATERIAL CATALOG ENDPOINTS
+# ============================================================================
+
+@router.get("/catalog", response_model=List[CatalogEntryResponse])
+async def list_catalog_entries(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Listar todas as entradas do catálogo de matérias-primas do usuário.
+
+    O catálogo mapeia nomes de produtos (do XML) para números de registro MAPA.
+    """
+    entries = db.query(RawMaterialCatalog).filter(
+        RawMaterialCatalog.user_id == current_user.id
+    ).order_by(RawMaterialCatalog.product_name).offset(skip).limit(limit).all()
+
+    return entries
+
+
+@router.post("/catalog", response_model=CatalogEntryResponse, status_code=status.HTTP_201_CREATED)
+async def create_catalog_entry(
+    entry: CatalogEntryCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Criar nova entrada no catálogo de matérias-primas.
+
+    Mapeia um nome de produto (exatamente como aparece no XML <xProd>)
+    para um número de registro MAPA completo.
+    """
+    # Check for duplicate product_name for this user
+    existing = db.query(RawMaterialCatalog).filter(
+        RawMaterialCatalog.user_id == current_user.id,
+        RawMaterialCatalog.product_name == entry.product_name
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Já existe uma entrada para o produto '{entry.product_name}' no seu catálogo"
+        )
+
+    catalog_entry = RawMaterialCatalog(
+        user_id=current_user.id,
+        product_name=entry.product_name,
+        mapa_registration=entry.mapa_registration,
+        product_reference=entry.product_reference
+    )
+
+    db.add(catalog_entry)
+    db.commit()
+    db.refresh(catalog_entry)
+
+    return catalog_entry
+
+
+@router.put("/catalog/{entry_id}", response_model=CatalogEntryResponse)
+async def update_catalog_entry(
+    entry_id: int,
+    entry_update: CatalogEntryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Atualizar entrada do catálogo de matérias-primas"""
+    catalog_entry = db.query(RawMaterialCatalog).filter(
+        RawMaterialCatalog.id == entry_id,
+        RawMaterialCatalog.user_id == current_user.id
+    ).first()
+
+    if not catalog_entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entrada do catálogo não encontrada"
+        )
+
+    # Update fields
+    if entry_update.product_name is not None:
+        # Check for duplicate product_name (excluding current entry)
+        existing = db.query(RawMaterialCatalog).filter(
+            RawMaterialCatalog.user_id == current_user.id,
+            RawMaterialCatalog.product_name == entry_update.product_name,
+            RawMaterialCatalog.id != entry_id
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Já existe outra entrada para o produto '{entry_update.product_name}' no seu catálogo"
+            )
+
+        catalog_entry.product_name = entry_update.product_name
+
+    if entry_update.mapa_registration is not None:
+        catalog_entry.mapa_registration = entry_update.mapa_registration
+
+    if entry_update.product_reference is not None:
+        catalog_entry.product_reference = entry_update.product_reference
+
+    db.commit()
+    db.refresh(catalog_entry)
+
+    return catalog_entry
+
+
+@router.delete("/catalog/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_catalog_entry(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Deletar entrada do catálogo de matérias-primas"""
+    catalog_entry = db.query(RawMaterialCatalog).filter(
+        RawMaterialCatalog.id == entry_id,
+        RawMaterialCatalog.user_id == current_user.id
+    ).first()
+
+    if not catalog_entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entrada do catálogo não encontrada"
+        )
+
+    db.delete(catalog_entry)
+    db.commit()
+
+    return None
+
+
+@router.get("/catalog/search/{product_name}")
+async def search_catalog_entry(
+    product_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Buscar entrada do catálogo por nome de produto (exato).
+
+    Usado durante o processamento de XML para lookup de registro MAPA.
+    """
+    entry = db.query(RawMaterialCatalog).filter(
+        RawMaterialCatalog.user_id == current_user.id,
+        RawMaterialCatalog.product_name == product_name
+    ).first()
+
+    if not entry:
+        return {"found": False, "product_name": product_name}
+
+    return {
+        "found": True,
+        "product_name": entry.product_name,
+        "mapa_registration": entry.mapa_registration,
+        "product_reference": entry.product_reference
+    }
