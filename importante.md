@@ -1,0 +1,625 @@
+# 🚀 Manual Completo de Implantação e Manutenção - MAPA SaaS
+
+**Sistema de Automação de Relatórios Trimestrais do MAPA**
+
+[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
+[![Azure](https://img.shields.io/badge/Azure-App%20Service-0078D4.svg)](https://azure.microsoft.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-336791.svg)](https://www.postgresql.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688.svg)](https://fastapi.tiangolo.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+---
+
+## 📋 Informações do Documento
+
+| Item | Detalhe |
+|------|---------|
+| **Versão** | 1.0.0 |
+| **Data de Criação** | 12 de Janeiro de 2025 |
+| **Última Atualização** | 13 de Janeiro de 2025 |
+| **Responsável Técnico** | Rhyan Rocha |
+| **E-mail de Contato** | rhyan.hdr@gmail.com |
+| **Status do Projeto** | Em Produção |
+
+---
+
+## 🎯 Sobre o Sistema
+
+O **MAPA SaaS** é uma aplicação web que automatiza a geração de relatórios trimestrais exigidos pelo Ministério da Agricultura, Pecuária e Abastecimento (MAPA) a partir do processamento de arquivos XML de Notas Fiscais Eletrônicas (NF-e).
+
+### **Funcionalidades Principais**
+
+- ✅ Upload e validação de arquivos XML (NF-e)
+- ✅ Extração automática de dados de fertilizantes
+- ✅ Processamento de arquivos PDF (DANFE)
+- ✅ Geração de relatórios trimestrais no formato Excel (MAPA)
+- ✅ Dashboard do usuário com histórico de uploads
+- ✅ Sistema de autenticação JWT
+- ✅ Gestão de usuários (admin/user)
+- ✅ Download de relatórios processados
+
+### **Tecnologias Utilizadas**
+
+| Categoria | Tecnologia | Versão | Finalidade |
+|-----------|-----------|--------|------------|
+| **Backend** | FastAPI | 0.104.1 | Framework web assíncrono |
+| **Linguagem** | Python | 3.11 | Linguagem de programação |
+| **Banco de Dados** | PostgreSQL | 14 | Armazenamento de dados |
+| **ORM** | SQLAlchemy | 2.0+ | Mapeamento objeto-relacional |
+| **Autenticação** | JWT | - | Tokens de autenticação |
+| **Cloud** | Azure App Service | - | Hospedagem da aplicação |
+| **Cloud DB** | Azure PostgreSQL Flexible | - | Banco de dados gerenciado |
+| **Server** | Uvicorn | 0.24+ | Servidor ASGI |
+| **Processamento XML** | lxml, xmltodict | - | Parser de XML |
+| **Processamento PDF** | pdfplumber, PyPDF2 | - | Extração de dados de PDF |
+| **Geração Excel** | openpyxl | 3.1+ | Geração de planilhas |
+| **Validação** | Pydantic | 2.0+ | Validação de dados |
+
+---
+
+## 📑 Índice Completo
+
+- [I. Configuração Essencial da Infraestrutura](#i-configuração-essencial-da-infraestrutura)
+- [II. Arquitetura do Sistema](#ii-arquitetura-do-sistema)
+- [III. Comandos Rápidos de Gerenciamento](#iii-comandos-rápidos-de-gerenciamento)
+- [IV. Deploy e Atualização](#iv-deploy-e-atualização)
+- [V. Gerenciamento do Banco de Dados](#v-gerenciamento-do-banco-de-dados)
+- [VI. Monitoramento e Logs](#vi-monitoramento-e-logs)
+- [VII. Configuração em Novos Ambientes](#vii-configuração-em-novos-ambientes)
+- [VIII. Backup e Recuperação](#viii-backup-e-recuperação)
+- [IX. Segurança e Boas Práticas](#ix-segurança-e-boas-práticas)
+- [X. Troubleshooting e Diagnóstico](#x-troubleshooting-e-diagnóstico)
+- [XI. Custos e Otimização](#xi-custos-e-otimização)
+- [XII. Procedimentos de Emergência](#xii-procedimentos-de-emergência)
+- [XIII. Apêndices](#xiii-apêndices)
+
+---
+
+## I. Configuração Essencial da Infraestrutura
+
+### 🔐 1.1 Endpoints e Credenciais de Acesso
+
+**⚠️ CONFIDENCIAL - Mantenha estas informações seguras**
+
+| Recurso | Detalhe | Valor |
+|---------|---------|-------|
+| **URL da API (Produção)** | Host principal | https://mapa-saas-app-1762971490.azurewebsites.net |
+| **Ferramenta de Diagnóstico** | Kudu (WebSSH) | https://mapa-saas-app-1762971490.scm.azurewebsites.net |
+| **Login do Sistema** | E-mail do Admin | rhyan.hdr@gmail.com |
+| **Localização** | Região do Azure | brazilsouth (Sul do Brasil) |
+| **Grupo de Recursos** | Resource Group | mapa-saas-rg |
+
+#### **Links Rápidos**
+
+| Serviço | URL | Descrição |
+|---------|-----|-----------|
+| **Portal Azure** | https://portal.azure.com | Console de gerenciamento |
+| **Aplicação Web** | https://mapa-saas-app-1762971490.azurewebsites.net | Aplicação em produção |
+| **API Docs (Swagger)** | https://mapa-saas-app-1762971490.azurewebsites.net/docs | Documentação interativa |
+| **API Docs (ReDoc)** | https://mapa-saas-app-1762971490.azurewebsites.net/redoc | Documentação alternativa |
+| **Health Check** | https://mapa-saas-app-1762971490.azurewebsites.net/health | Status da aplicação |
+| **Kudu Console** | https://mapa-saas-app-1762971490.scm.azurewebsites.net | Console avançado |
+| **WebSSH** | https://mapa-saas-app-1762971490.scm.azurewebsites.net/webssh/host | Terminal no navegador |
+| **Log Stream** | https://mapa-saas-app-1762971490.scm.azurewebsites.net/api/logstream | Logs em tempo real |
+
+### 🗄️ 1.2 Configuração do Banco de Dados (PostgreSQL)
+
+**Servidor PostgreSQL Flexible Server configurado com acesso público controlado por firewall.**
+
+| Detalhe | Valor | Observação |
+|---------|-------|------------|
+| **Nome do Servidor** | mapa-saas-db-1762971848 | Host para conexão |
+| **Host Completo** | mapa-saas-db-1762971848.postgres.database.azure.com | FQDN do servidor |
+| **Nome do DB** | mapa_saas | Nome do banco de dados |
+| **Usuário Admin** | mapaadmin | Usuário para operações |
+| **Senha ATUAL** | NovaSenha12345! | ⚠️ Senha resetada (sem @) |
+| **Porta** | 5432 | Porta padrão PostgreSQL |
+| **Versão** | 14 | Versão do PostgreSQL |
+| **SSL Mode** | require | SSL obrigatório |
+| **SKU** | Standard_B1ms | Plano Burstable |
+| **Storage** | 32 GB | Armazenamento |
+
+#### **String de Conexão Completa**
+
+```bash
+# Variável DATABASE_URL (App Settings)
+postgresql://mapaadmin:NovaSenha12345!@mapa-saas-db-1762971848.postgres.database.azure.com:5432/mapa_saas?sslmode=require
+```
+
+#### **Estrutura do Banco de Dados**
+
+```sql
+-- Tabela: users
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    full_name VARCHAR(255),
+    hashed_password VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_admin BOOLEAN DEFAULT FALSE,
+    company_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabela: xml_uploads
+CREATE TABLE xml_uploads (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending',
+    upload_date TIMESTAMP DEFAULT NOW(),
+    processed_date TIMESTAMP,
+    error_message TEXT,
+    nfe_data JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabela: reports
+CREATE TABLE reports (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    report_period VARCHAR(20) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    generated_date TIMESTAMP DEFAULT NOW(),
+    status VARCHAR(50) DEFAULT 'completed',
+    xml_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Índices para otimização
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_xml_uploads_user_id ON xml_uploads(user_id);
+CREATE INDEX idx_xml_uploads_status ON xml_uploads(status);
+CREATE INDEX idx_reports_user_id ON reports(user_id);
+CREATE INDEX idx_reports_period ON reports(report_period);
+```
+
+### 🌐 1.3 Configuração do App Service (Web App)
+
+| Detalhe | Valor | Observação |
+|---------|-------|------------|
+| **Nome do Web App** | mapa-saas-app-1762971490 | Nome do contêiner |
+| **Runtime** | PYTHON:3.11 | Versão Python |
+| **Comando de Startup** | `uvicorn app.main:app --host 0.0.0.0 --port 8000` | Processo inicial |
+| **Plano de Serviço** | mapa-saas-plan | Nome do App Service Plan |
+| **SKU** | B1 (Basic) | Plano pago 24/7 |
+| **Sistema Operacional** | Linux | Container Linux |
+| **Deployment Method** | ZIP Deploy | Método de deploy |
+
+#### **Variáveis de Ambiente (App Settings)**
+
+| Variável | Valor Exemplo | Descrição |
+|----------|---------------|-----------|
+| `DATABASE_URL` | `postgresql://mapaadmin:...` | String de conexão PostgreSQL |
+| `SECRET_KEY` | `[gerado automaticamente]` | Chave para assinatura JWT (32+ chars) |
+| `ALGORITHM` | `HS256` | Algoritmo de criptografia JWT |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Tempo de expiração do token |
+| `DEBUG` | `False` | ⚠️ Sempre False em produção |
+| `ALLOWED_ORIGINS` | `https://mapa-saas-app-1762971490.azurewebsites.net` | CORS origins permitidos |
+| `WEBSITES_PORT` | `8000` | Porta interna do container |
+| `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` | Build automático no deploy |
+
+#### **Estrutura de Diretórios da Aplicação**
+
+```
+/home/site/wwwroot/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # Entrada da aplicação FastAPI
+│   ├── auth.py              # Lógica de autenticação JWT
+│   ├── database.py          # Configuração SQLAlchemy
+│   ├── models.py            # Modelos ORM (User, XMLUpload, Report)
+│   ├── schemas.py           # Schemas Pydantic (validação)
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── admin.py         # Rotas do admin (/api/admin/*)
+│   │   └── user.py          # Rotas do usuário (/api/user/*)
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── xml_processor.py # Processamento de XML NF-e
+│   │   ├── pdf_processor.py # Extração de dados do PDF
+│   │   └── report_generator.py # Geração de relatórios Excel
+│   └── templates/
+│       ├── index.html       # Página de login
+│       ├── admin_dashboard.html
+│       └── user_dashboard.html
+├── uploads/                 # Diretório para arquivos enviados
+├── reports/                 # Relatórios gerados
+├── logs/                    # Logs da aplicação
+├── requirements.txt         # Dependências Python
+├── create_admin.py          # Script para criar admin
+└── .gitignore
+```
+
+---
+
+## II. Arquitetura do Sistema
+
+### 🏗️ 2.1 Diagrama de Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         USUÁRIO                             │
+│                    (Navegador Web)                          │
+└────────────────────────┬────────────────────────────────────┘
+                         │ HTTPS
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Azure App Service (Linux)                      │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │         Uvicorn (ASGI Server)                       │   │
+│  │  ┌───────────────────────────────────────────────┐  │   │
+│  │  │      FastAPI Application                      │  │   │
+│  │  │  ┌──────────────┐  ┌──────────────────────┐  │  │   │
+│  │  │  │   Routers    │  │    Middlewares       │  │  │   │
+│  │  │  │ - Admin      │  │ - CORS               │  │  │   │
+│  │  │  │ - User       │  │ - Authentication     │  │  │   │
+│  │  │  └──────────────┘  └──────────────────────┘  │  │   │
+│  │  │  ┌──────────────┐  ┌──────────────────────┐  │  │   │
+│  │  │  │ Utils        │  │   Static/Templates   │  │  │   │
+│  │  │  │ - XML Proc   │  │ - HTML Pages         │  │  │   │
+│  │  │  │ - PDF Proc   │  │ - CSS/JS             │  │  │   │
+│  │  │  │ - Report Gen │  │                      │  │  │   │
+│  │  │  └──────────────┘  └──────────────────────┘  │  │   │
+│  │  └───────────────────────────────────────────────┘  │   │
+│  └─────────────────────────────────────────────────────┘   │
+└────────────────────────┬────────────────────────────────────┘
+                         │ PostgreSQL Protocol (SSL)
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│       Azure PostgreSQL Flexible Server                      │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │            PostgreSQL 14 Database                   │   │
+│  │  ┌──────────┐  ┌───────────────┐  ┌────────────┐  │   │
+│  │  │  users   │  │ xml_uploads   │  │  reports   │  │   │
+│  │  └──────────┘  └───────────────┘  └────────────┘  │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 🔄 2.2 Fluxo de Processamento de NF-e
+
+```
+1. UPLOAD
+   Usuario → FastAPI → Salvar arquivo XML em /uploads
+                    → Criar registro em xml_uploads (status='pending')
+
+2. VALIDAÇÃO
+   FastAPI → Validar estrutura XML
+          → Verificar assinatura digital
+          → Validar chave de acesso (44 dígitos)
+
+3. PROCESSAMENTO
+   XML Processor → Extrair dados da NF-e
+                → Extrair produtos e quantidades
+                → Identificar emitente/destinatário
+   
+   PDF Processor (se houver) → Extrair dados do DANFE
+                             → Capturar registro MAPA
+                             → Validar CNPJs
+
+4. ARMAZENAMENTO
+   FastAPI → Atualizar xml_uploads com nfe_data (JSONB)
+          → Marcar status='processed'
+
+5. GERAÇÃO DE RELATÓRIO
+   Report Generator → Agrupar XMLs por trimestre
+                   → Extrair garantias dos produtos
+                   → Gerar Excel no formato MAPA
+                   → Salvar em /reports
+                   → Criar registro em reports
+
+6. DOWNLOAD
+   Usuario → Solicitar relatório
+          → FastAPI retorna arquivo Excel
+```
+
+### 🔐 2.3 Fluxo de Autenticação
+
+```
+1. LOGIN
+   Usuario → POST /api/admin/auth/login (ou /api/user/auth/login)
+          → { email, password }
+
+2. VERIFICAÇÃO
+   FastAPI → Buscar usuário no DB por email
+          → Verificar senha com bcrypt
+          → Validar se usuário está ativo
+
+3. GERAÇÃO DE TOKEN
+   FastAPI → Gerar JWT com payload: { sub: user_id, email, is_admin }
+          → Assinar com SECRET_KEY usando HS256
+          → Retornar { access_token, token_type: "bearer" }
+
+4. REQUISIÇÕES AUTENTICADAS
+   Usuario → Enviar token no header: Authorization: Bearer <token>
+   FastAPI → Validar token JWT
+          → Decodificar e verificar assinatura
+          → Extrair user_id do payload
+          → Buscar usuário no DB
+          → Autorizar acesso
+
+5. EXPIRAÇÃO
+   Token expira em 30 minutos (ACCESS_TOKEN_EXPIRE_MINUTES)
+   Usuario precisa fazer login novamente
+```
+
+---
+
+## III. Comandos Rápidos de Gerenciamento
+
+### ⚙️ 3.1 Variáveis de Ambiente do Terminal
+
+**Configure estas variáveis para facilitar os comandos:**
+
+```bash
+# Definir variáveis (adicione ao ~/.bashrc ou ~/.zshrc para persistir)
+export RESOURCE_GROUP="mapa-saas-rg"
+export WEB_APP="mapa-saas-app-1762971490"
+export DB_SERVER="mapa-saas-db-1762971848"
+export DB_NAME="mapa_saas"
+export LOCATION="brazilsouth"
+export PLAN_NAME="mapa-saas-plan"
+
+# Aplicar (se adicionou ao bashrc)
+source ~/.bashrc
+```
+
+### 🚀 3.2 Tabela de Comandos Essenciais
+
+| Tarefa | Comando Azure CLI | Explicação |
+|--------|-------------------|------------|
+| **Deploy de Código** | `az webapp deployment source config-zip -g $RESOURCE_GROUP -n $WEB_APP --src mapa-saas.zip` | Envia ZIP com código atualizado e inicia build automático |
+| **Reiniciar App** | `az webapp restart -g $RESOURCE_GROUP -n $WEB_APP` | Força reload da aplicação (após mudanças de config) |
+| **Ver Logs** | `az webapp log tail -g $RESOURCE_GROUP -n $WEB_APP` | Visualização em tempo real dos logs do Uvicorn |
+| **Baixar Logs** | `az webapp log download -g $RESOURCE_GROUP -n $WEB_APP --log-file logs.zip` | Download de todos os logs para análise |
+| **Ver Status** | `az webapp show -g $RESOURCE_GROUP -n $WEB_APP --query state -o tsv` | Verifica se app está Running/Stopped |
+| **Parar App** | `az webapp stop -g $RESOURCE_GROUP -n $WEB_APP` | Para a aplicação (⚠️ custo continua) |
+| **Iniciar App** | `az webapp start -g $RESOURCE_GROUP -n $WEB_APP` | Inicia aplicação parada |
+| **Resetar Senha DB** | `az postgres flexible-server update -g $RESOURCE_GROUP -n $DB_SERVER --admin-password "NovaSenha!"` | Atualiza senha do PostgreSQL (ver seção V.3) |
+| **Ver App Settings** | `az webapp config appsettings list -g $RESOURCE_GROUP -n $WEB_APP -o table` | Lista todas variáveis de ambiente |
+| **Atualizar Setting** | `az webapp config appsettings set -g $RESOURCE_GROUP -n $WEB_APP --settings DEBUG="False"` | Atualiza variável específica |
+| **SSH no App** | `az webapp ssh -g $RESOURCE_GROUP -n $WEB_APP` | Acessa terminal do container |
+| **Testar Health** | `curl https://$WEB_APP.azurewebsites.net/health` | Verifica se aplicação responde |
+| **Parar Cobrança** | `az group delete -n $RESOURCE_GROUP --yes --no-wait` | ⚠️ **EXCLUIR TUDO (Irreversível)** |
+
+### 📝 3.3 Scripts de Automação
+
+#### **Script: deploy.sh**
+
+```bash
+#!/bin/bash
+# Script para deploy automatizado
+
+set -e  # Parar em caso de erro
+
+echo "🚀 Iniciando deploy do MAPA SaaS..."
+
+# Variáveis
+RESOURCE_GROUP="mapa-saas-rg"
+WEB_APP="mapa-saas-app-1762971490"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+ZIP_FILE="mapa-saas-${TIMESTAMP}.zip"
+
+# 1. Criar ZIP excluindo arquivos desnecessários
+echo "📦 Criando arquivo ZIP..."
+zip -r "$ZIP_FILE" . \
+  -x "venv/*" \
+  -x ".git/*" \
+  -x "__pycache__/*" \
+  -x "*.pyc" \
+  -x ".env*" \
+  -x "uploads/*" \
+  -x "reports/*" \
+  -x "logs/*" \
+  -x ".vscode/*" \
+  -x ".idea/*"
+
+# 2. Fazer deploy
+echo "🚢 Enviando para Azure..."
+az webapp deployment source config-zip \
+  -g "$RESOURCE_GROUP" \
+  -n "$WEB_APP" \
+  --src "$ZIP_FILE"
+
+# 3. Aguardar alguns segundos
+echo "⏳ Aguardando deploy..."
+sleep 20
+
+# 4. Reiniciar aplicação
+echo "🔄 Reiniciando aplicação..."
+az webapp restart -g "$RESOURCE_GROUP" -n "$WEB_APP"
+
+# 5. Aguardar inicialização
+sleep 15
+
+# 6. Testar health check
+echo "🔍 Testando aplicação..."
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://${WEB_APP}.azurewebsites.net/health)
+
+if [ "$HTTP_CODE" = "200" ]; then
+    echo "✅ Deploy concluído com sucesso!"
+    echo "🌐 URL: https://${WEB_APP}.azurewebsites.net"
+else
+    echo "❌ Erro no deploy! HTTP Code: $HTTP_CODE"
+    echo "📋 Verificando logs..."
+    az webapp log tail -g "$RESOURCE_GROUP" -n "$WEB_APP" --limit 50
+    exit 1
+fi
+
+# 7. Limpar ZIP local
+rm "$ZIP_FILE"
+echo "🧹 Arquivo ZIP removido"
+
+echo "🎉 Deploy finalizado!"
+```
+
+**Usar o script:**
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+#### **Script: check-health.sh**
+
+```bash
+#!/bin/bash
+# Script para verificar saúde da aplicação
+
+WEB_APP="mapa-saas-app-1762971490"
+RESOURCE_GROUP="mapa-saas-rg"
+DB_SERVER="mapa-saas-db-1762971848"
+
+echo "🏥 Verificando saúde do MAPA SaaS - $(date)"
+echo "================================================"
+
+# 1. Status do Web App
+echo "📊 Status do Web App:"
+STATE=$(az webapp show -g "$RESOURCE_GROUP" -n "$WEB_APP" --query state -o tsv)
+echo "  Estado: $STATE"
+
+# 2. Health Check HTTP
+echo -e "\n🌐 Health Check HTTP:"
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://${WEB_APP}.azurewebsites.net/health)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo "  ✅ Aplicação respondendo (HTTP $HTTP_CODE)"
+else
+    echo "  ❌ Aplicação com problemas (HTTP $HTTP_CODE)"
+fi
+
+# 3. Status do PostgreSQL
+echo -e "\n🗄️  Status do PostgreSQL:"
+DB_STATE=$(az postgres flexible-server show -g "$RESOURCE_GROUP" -n "$DB_SERVER" --query state -o tsv)
+echo "  Estado: $DB_STATE"
+
+# 4. Testar conexão ao banco
+echo -e "\n🔌 Testando conexão ao banco:"
+RESPONSE=$(curl -s https://${WEB_APP}.azurewebsites.net/health)
+if echo "$RESPONSE" | grep -q "database.*ok"; then
+    echo "  ✅ Conexão com banco OK"
+else
+    echo "  ❌ Problema na conexão com banco"
+fi
+
+# 5. Últimas 10 linhas de log
+echo -e "\n📋 Últimas linhas de log:"
+az webapp log tail -g "$RESOURCE_GROUP" -n "$WEB_APP" --limit 10
+
+echo -e "\n✅ Verificação concluída!"
+```
+
+**Usar o script:**
+
+```bash
+chmod +x check-health.sh
+./check-health.sh
+```
+
+---
+
+## IV. Deploy e Atualização
+
+### 🔄 4.1 Processo Completo de Deploy
+
+#### **Método 1: Deploy via ZIP (Recomendado)**
+
+**Passo a passo detalhado:**
+
+```bash
+# 1. Navegar até o diretório do projeto
+cd ~/Documentos/mapa-saas
+
+# 2. Ativar ambiente virtual (para testes locais opcionais)
+source venv/bin/activate
+
+# 3. Atualizar dependências se necessário
+pip install -r requirements.txt
+
+# 4. Testar localmente (opcional mas recomendado)
+# Criar .env local com configurações de teste
+echo "DATABASE_URL=postgresql://postgres:senha@localhost:5432/mapa_test" > .env.test
+echo "DEBUG=True" >> .env.test
+
+# Iniciar servidor local
+uvicorn app.main:app --reload --port 8000
+
+# Em outro terminal, testar
+curl http://localhost:8000/health
+
+# Parar servidor (Ctrl+C)
+
+# 5. Criar ZIP excluindo arquivos desnecessários
+zip -r mapa-saas-$(date +%Y%m%d-%H%M%S).zip . \
+  -x "venv/*" \
+  -x ".git/*" \
+  -x ".github/*" \
+  -x "__pycache__/*" \
+  -x "*.pyc" \
+  -x "*.pyo" \
+  -x ".env*" \
+  -x "uploads/*" \
+  -x "reports/*" \
+  -x "logs/*" \
+  -x ".vscode/*" \
+  -x ".idea/*" \
+  -x "*.db" \
+  -x "*.sqlite*" \
+  -x ".DS_Store" \
+  -x "*.log" \
+  -x "node_modules/*"
+
+# 6. Verificar conteúdo do ZIP (opcional)
+unzip -l mapa-saas-*.zip | head -20
+
+# 7. Fazer deploy para Azure
+az webapp deployment source config-zip \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --src mapa-saas-$(date +%Y%m%d)*.zip
+
+# 8. Monitorar logs durante o deploy
+az webapp log tail \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490
+
+# Aguardar mensagens:
+# - "Detecting platforms..."
+# - "Platform 'python' detected"
+# - "Running pip install..."
+# - "App started successfully"
+
+# Parar com Ctrl+C quando ver "App started"
+
+# 9. Aguardar e reiniciar se necessário
+sleep 30
+az webapp restart \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490
+
+# 10. Testar aplicação
+curl -f https://mapa-saas-app-1762971490.azurewebsites.net/health
+# Resposta esperada: {"status":"ok","timestamp":"..."}
+
+# 11. Testar login
+curl -X POST https://mapa-saas-app-1762971490.azurewebsites.net/api/admin/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"rhyan.hdr@gmail.com","password":"SUA_SENHA"}'
+
+# Resposta esperada: {"access_token":"eyJ...","token_type":"bearer"}
+
+# 12. Limpar ZIP local
+rm mapa-saas-*.zip
+```
+
+#### **Método 2: Deploy via Git**
+
+```bash
+# 1. Configurar remote do Azure (apenas primeira vez)
+git remote add azure https://mapa-saas-app-1762971490.scm.azurewebsites.net/mapa-saas-app-1762971490.git
+
+# 2. Obter credenciais
+CREDS=$(az webapp deployment list-publishing-credentials \
+  --resource-group mapa-saas-rg \
