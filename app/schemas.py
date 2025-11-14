@@ -126,6 +126,33 @@ class ReportResponse(BaseModel):
     report_period: Optional[str]
     generated_at: datetime
     file_path: str
-    
+
+    class Config:
+        from_attributes = True
+
+
+# Raw Material Catalog Schemas
+class CatalogEntryBase(BaseModel):
+    product_name: str = Field(..., min_length=1, max_length=500, description="Nome exato do produto conforme aparece no XML <xProd>")
+    mapa_registration: str = Field(..., min_length=1, max_length=100, description="Número de Registro MAPA completo (ex: RS-003295-9.000007)")
+    product_reference: Optional[str] = Field(None, max_length=500, description="Referência ou nota opcional para o usuário")
+
+
+class CatalogEntryCreate(CatalogEntryBase):
+    pass
+
+
+class CatalogEntryUpdate(BaseModel):
+    product_name: Optional[str] = Field(None, min_length=1, max_length=500)
+    mapa_registration: Optional[str] = Field(None, min_length=1, max_length=100)
+    product_reference: Optional[str] = Field(None, max_length=500)
+
+
+class CatalogEntryResponse(CatalogEntryBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
