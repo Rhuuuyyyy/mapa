@@ -66,10 +66,15 @@
             
             <div class="form-group">
                 <label for="userPassword">Senha *</label>
-                <input type="password" id="userPassword" minlength="6">
-                <small>Mínimo 6 caracteres</small>
-            </div>
-            
+                <input type="password" id="userPassword" minlength="12">
+                <small style="display: block; margin-top: 8px; line-height: 1.6;">
+                    <strong>Requisitos de senha:</strong><br>
+                    • Mínimo 12 caracteres<br>
+                    • Letras maiúsculas e minúsculas<br>
+                    • Números<br>
+                    • Caracteres especiais (!@#$%^&*...)
+                </small>
+            </div>            
             <div class="form-group checkbox">
                 <label>
                     <input type="checkbox" id="isAdmin">

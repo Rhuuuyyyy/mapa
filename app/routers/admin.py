@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import timedelta
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from ..database import get_db
 from ..models import User
 from ..schemas import UserCreate, UserUpdate, UserResponse, LoginRequest, Token
@@ -15,11 +17,13 @@ from ..auth import (
 from ..config import settings
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/auth/login", response_model=Token)
-async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    """Login endpoint para administradores e usuários"""
+@limiter.limit("5/minute")  # 5 tentativas por minuto por IP
+async def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_db)):
+    """Login endpoint para administradores e usuários (Rate limited: 5/min)"""
     user = db.query(User).filter(User.email == login_data.email).first()
     
     if not user or not verify_password(login_data.password, user.hashed_password):
