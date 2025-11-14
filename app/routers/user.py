@@ -13,6 +13,7 @@ from ..utils.nfe_processor import NFeProcessor
 from ..utils.mapa_mapper import MAPAMapper
 from ..utils.pdf_processor import NFePDFProcessor
 from ..utils.report_generator import MAPAReportGenerator
+from ..utils.file_validator import FileValidator
 
 router = APIRouter()
 
@@ -35,26 +36,43 @@ async def upload_nfe(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload de arquivo XML ou PDF de NF-e"""
-    # Validate file extension
-    file_ext = file.filename.lower().split('.')[-1]
-    if file_ext not in ['xml', 'pdf']:
+    """
+    Upload de arquivo XML ou PDF de NF-e com validação de segurança completa.
+
+    Validações aplicadas:
+    - Extensão do arquivo (xml, pdf)
+    - Tipo MIME
+    - Magic numbers/assinatura do arquivo
+    - Tamanho máximo (10MB)
+    - Estrutura do conteúdo
+    - Sanitização do nome do arquivo
+    """
+    # Comprehensive file validation (MIME type, magic numbers, size, structure)
+    is_valid, error_message = await FileValidator.validate_file(file, ['xml', 'pdf'])
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Apenas arquivos XML ou PDF são permitidos"
+            detail=error_message
         )
-    
-    # Create user-specific directory
-    user_upload_dir = os.path.join(UPLOAD_DIR, str(current_user.id))
-    os.makedirs(user_upload_dir, exist_ok=True)
-    
-    # Generate unique filename
+
+    # Get file extension
+    file_ext = file.filename.lower().split('.')[-1]
+
+    # Generate timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_filename = f"{timestamp}_{file.filename}"
-    file_path = os.path.join(user_upload_dir, safe_filename)
-    
-    # Save file
+
+    # Create safe file path (prevents path traversal attacks)
+    file_path = FileValidator.get_safe_file_path(
+        UPLOAD_DIR,
+        current_user.id,
+        file.filename,
+        timestamp
+    )
+
+    # Save file securely
     try:
+        # Seek back to beginning after validation
+        await file.seek(0)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
