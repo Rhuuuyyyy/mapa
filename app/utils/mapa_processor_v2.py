@@ -5,8 +5,10 @@ This module implements the new catalog-based approach where:
 1. Product names are extracted from XML <xProd>
 2. MAPA registration numbers are looked up from user's catalog (not auto-extracted)
 3. Products are classified as Import (UF=EX) or Domestic
-4. Quantities are aggregated by MAPA registration number
-5. Unregistered products are reported as errors (not silently skipped)
+4. Units are converted to Tonnes (KG÷1000, TN as-is) BEFORE aggregation
+5. Quantities are aggregated by MAPA registration number
+6. Unregistered products are reported as errors (not silently skipped)
+7. All final output is in Tonnes
 """
 
 from dataclasses import dataclass, field
@@ -132,26 +134,29 @@ class MAPAProcessorV2:
                 # Step 3: Extract data from NFe
                 mapa_registration = catalog_entry.mapa_registration
                 quantity = product.quantidade
-                unit = self._normalize_unit(product.unidade)
+                unit = product.unidade
 
-                # Step 4: Classify entry (Import vs Domestic)
+                # Step 4: Convert to tonnes BEFORE aggregation (CRITICAL)
+                quantity_in_tonnes = self._convert_to_tonnes(quantity, unit)
+
+                # Step 5: Classify entry (Import vs Domestic)
                 is_import = self._is_import(nfe_data)
 
-                # Step 5: Aggregate by MAPA registration
+                # Step 6: Aggregate by MAPA registration
                 if mapa_registration not in aggregated_data:
                     aggregated_data[mapa_registration] = MapaAggregatedRow(
                         mapa_registration=mapa_registration,
                         product_reference=product_name,  # First occurrence
-                        unit=unit
+                        unit="Tonelada"  # Always Tonelada in final output
                     )
 
                 row = aggregated_data[mapa_registration]
 
-                # Add quantities
+                # Add converted quantities
                 if is_import:
-                    row.quantity_import += quantity
+                    row.quantity_import += quantity_in_tonnes
                 else:
-                    row.quantity_domestic += quantity
+                    row.quantity_domestic += quantity_in_tonnes
 
                 # Track source NFe
                 if nfe_data.numero_nota and nfe_data.numero_nota not in row.source_nfes:
@@ -183,6 +188,36 @@ class MAPAProcessorV2:
         """
         emitente_uf = nfe_data.emitente.endereco.uf.upper() if nfe_data.emitente.endereco.uf else ""
         return emitente_uf == "EX"
+
+    def _convert_to_tonnes(self, quantity: Decimal, unit: str) -> Decimal:
+        """
+        Convert quantity to Tonnes based on unit.
+
+        Args:
+            quantity: Quantity value from NFe
+            unit: Unit from NFe (TON, TN, KG, etc.)
+
+        Returns:
+            Quantity converted to Tonnes
+        """
+        if not unit:
+            # No unit specified - assume KG and convert
+            return quantity / Decimal("1000")
+
+        unit_upper = unit.upper().strip()
+
+        # Check if already in tonnes
+        if unit_upper in ["TON", "TONELADA", "TONELADAS", "TN", "T"]:
+            return quantity  # Already in tonnes
+
+        # Convert KG to tonnes
+        elif unit_upper in ["KG", "QUILOGRAMA", "QUILOGRAMAS"]:
+            return quantity / Decimal("1000")
+
+        # Unknown unit - log warning and assume KG
+        else:
+            print(f"Warning: Unknown unit '{unit}'. Assuming KG and converting to tonnes.")
+            return quantity / Decimal("1000")
 
     def _normalize_unit(self, unit: str) -> str:
         """
