@@ -11,8 +11,61 @@
             <button onclick="logout()" class="btn btn-secondary">Sair</button>
         </div>
     </header>
-    
+
     <div class="dashboard-content">
+        <!-- Status Dashboard Widget -->
+        <div class="status-dashboard" id="statusDashboard" style="display: none;">
+            <div class="status-card">
+                <div class="status-header">
+                    <h3>📊 Status do Relatório</h3>
+                    <button onclick="refreshDashboardStatus()" class="btn-small btn-secondary" title="Atualizar">
+                        🔄
+                    </button>
+                </div>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-icon status-icon-company" id="companiesStatusIcon">⏳</div>
+                        <div class="status-info">
+                            <div class="status-label">Empresas</div>
+                            <div class="status-value" id="companiesStatus">-/-</div>
+                            <div class="status-detail" id="companiesDetail">Carregando...</div>
+                        </div>
+                    </div>
+
+                    <div class="status-item">
+                        <div class="status-icon status-icon-product" id="productsStatusIcon">⏳</div>
+                        <div class="status-info">
+                            <div class="status-label">Produtos</div>
+                            <div class="status-value" id="productsStatus">-/-</div>
+                            <div class="status-detail" id="productsDetail">Carregando...</div>
+                        </div>
+                    </div>
+
+                    <div class="status-item">
+                        <div class="status-icon status-icon-upload">📄</div>
+                        <div class="status-info">
+                            <div class="status-label">XMLs Processados</div>
+                            <div class="status-value" id="uploadsStatus">-</div>
+                            <div class="status-detail">Arquivos analisados</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status-actions" id="statusActions">
+                    <div class="status-message" id="statusMessage">
+                        Carregando informações...
+                    </div>
+                    <button onclick="showMissingItemsModal()" class="btn btn-warning" id="btnShowMissing" style="display: none;">
+                        ⚠️ Ver Itens Faltantes
+                    </button>
+                    <button onclick="showQuickRegisterModal()" class="btn btn-success" id="btnQuickRegister" style="display: none;">
+                        ⚡ Cadastrar Rapidamente
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Companies Section -->
         <div class="companies-section">
             <div class="section-header">

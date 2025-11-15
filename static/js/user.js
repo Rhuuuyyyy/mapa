@@ -6,6 +6,7 @@ if (!checkAuth()) {
 // Load user info, companies, products, and uploads on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadUserInfo();
+    await loadDashboardStatus(); // NEW: Load dashboard first
     await loadCompanies();
     await loadProducts();
     await loadUploads();
@@ -25,6 +26,292 @@ async function loadUserInfo() {
     } catch (error) {
         console.error('Error loading user info:', error);
         Toast.error('Erro ao carregar informações do usuário');
+    }
+}
+
+// ============================================================================
+// DASHBOARD STATUS FUNCTIONS (Smart Workflow)
+// ============================================================================
+
+let currentMissingItems = null; // Cache for missing items
+
+async function loadDashboardStatus() {
+    const dashboard = document.getElementById('statusDashboard');
+    if (!dashboard) return;
+
+    try {
+        const response = await fetchAPI('/api/user/dashboard-status');
+        if (!response || !response.ok) {
+            // Dashboard is optional, don't show error if it fails
+            return;
+        }
+
+        const status = await response.json();
+
+        // Show dashboard
+        dashboard.style.display = 'block';
+
+        // Update companies status
+        const companiesIcon = document.getElementById('companiesStatusIcon');
+        const companiesStatus = document.getElementById('companiesStatus');
+        const companiesDetail = document.getElementById('companiesDetail');
+
+        companiesStatus.textContent = `${status.companies.registered}/${status.companies.required}`;
+
+        if (status.companies.missing === 0 && status.companies.required > 0) {
+            companiesIcon.textContent = '✅';
+            companiesIcon.classList.add('status-complete');
+            companiesDetail.textContent = 'Todas cadastradas';
+        } else if (status.companies.required === 0) {
+            companiesIcon.textContent = '📤';
+            companiesDetail.textContent = 'Faça upload de XMLs';
+        } else {
+            companiesIcon.textContent = '⚠️';
+            companiesIcon.classList.add('status-incomplete');
+            companiesDetail.textContent = `Faltam ${status.companies.missing}`;
+        }
+
+        // Update products status
+        const productsIcon = document.getElementById('productsStatusIcon');
+        const productsStatus = document.getElementById('productsStatus');
+        const productsDetail = document.getElementById('productsDetail');
+
+        productsStatus.textContent = `${status.products.registered}/${status.products.required}`;
+
+        if (status.products.missing === 0 && status.products.required > 0) {
+            productsIcon.textContent = '✅';
+            productsIcon.classList.add('status-complete');
+            productsDetail.textContent = 'Todos cadastrados';
+        } else if (status.products.required === 0) {
+            productsIcon.textContent = '📤';
+            productsDetail.textContent = 'Faça upload de XMLs';
+        } else {
+            productsIcon.textContent = '⚠️';
+            productsIcon.classList.add('status-incomplete');
+            productsDetail.textContent = `Faltam ${status.products.missing}`;
+        }
+
+        // Update uploads status
+        const uploadsStatus = document.getElementById('uploadsStatus');
+        uploadsStatus.textContent = status.uploads.total;
+
+        // Update status message and actions
+        const statusMessage = document.getElementById('statusMessage');
+        const btnShowMissing = document.getElementById('btnShowMissing');
+        const btnQuickRegister = document.getElementById('btnQuickRegister');
+
+        if (status.ready_to_generate) {
+            statusMessage.textContent = '✅ Tudo pronto! Você pode gerar o relatório.';
+            statusMessage.className = 'status-message status-ready';
+            btnShowMissing.style.display = 'none';
+            btnQuickRegister.style.display = 'none';
+        } else if (status.companies.required === 0) {
+            statusMessage.textContent = '📤 Faça upload de XMLs para começar.';
+            statusMessage.className = 'status-message';
+            btnShowMissing.style.display = 'none';
+            btnQuickRegister.style.display = 'none';
+        } else {
+            const totalMissing = status.companies.missing + status.products.missing;
+            statusMessage.textContent = `⚠️ Faltam ${totalMissing} item(ns) para cadastrar.`;
+            statusMessage.className = 'status-message status-warning';
+            btnShowMissing.style.display = 'inline-flex';
+            btnQuickRegister.style.display = 'inline-flex';
+        }
+
+    } catch (error) {
+        console.error('Error loading dashboard status:', error);
+        // Dashboard is optional, silently fail
+    }
+}
+
+async function refreshDashboardStatus() {
+    await loadDashboardStatus();
+    Toast.info('Status atualizado!');
+}
+
+async function showMissingItemsModal() {
+    try {
+        const response = await fetchAPI('/api/user/analyze-missing');
+        if (!response || !response.ok) {
+            throw new Error('Erro ao buscar itens faltantes');
+        }
+
+        const analysis = await response.json();
+        currentMissingItems = analysis; // Cache for quick register
+
+        const missingCompanies = analysis.missing_companies || [];
+        const missingProducts = analysis.missing_products || [];
+
+        if (missingCompanies.length === 0 && missingProducts.length === 0) {
+            Toast.success('Não há itens faltantes! Tudo cadastrado.');
+            return;
+        }
+
+        let contentHTML = '<div style="max-height: 400px; overflow-y: auto;">';
+
+        if (missingCompanies.length > 0) {
+            contentHTML += `
+                <h4 style="margin-top: 0; color: var(--text-primary);">Empresas Faltantes (${missingCompanies.length})</h4>
+                <ul style="list-style: none; padding: 0; margin-bottom: 1.5rem;">
+                    ${missingCompanies.map(c => `
+                        <li style="padding: 0.5rem; background: var(--background); margin-bottom: 0.5rem; border-radius: 4px;">
+                            <strong>🏢 ${escapeHtml(c.company_name)}</strong>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        }
+
+        if (missingProducts.length > 0) {
+            contentHTML += `
+                <h4 style="color: var(--text-primary);">Produtos Faltantes (${missingProducts.length})</h4>
+                <ul style="list-style: none; padding: 0;">
+                    ${missingProducts.map(p => `
+                        <li style="padding: 0.5rem; background: var(--background); margin-bottom: 0.5rem; border-radius: 4px;">
+                            <strong>📦 ${escapeHtml(p.product_name)}</strong><br>
+                            <small style="color: var(--text-secondary);">Empresa: ${escapeHtml(p.company_name)}</small>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        }
+
+        contentHTML += '</div>';
+
+        await showConfirmModal(
+            'Itens Faltantes no Cadastro',
+            contentHTML
+        );
+
+    } catch (error) {
+        console.error('Error showing missing items:', error);
+        Toast.error('Erro ao carregar itens faltantes');
+    }
+}
+
+async function showQuickRegisterModal() {
+    if (!currentMissingItems) {
+        // Load missing items first
+        try {
+            const response = await fetchAPI('/api/user/analyze-missing');
+            currentMissingItems = await response.json();
+        } catch (error) {
+            Toast.error('Erro ao carregar itens faltantes');
+            return;
+        }
+    }
+
+    const missingCompanies = currentMissingItems.missing_companies || [];
+    const missingProducts = currentMissingItems.missing_products || [];
+
+    if (missingCompanies.length === 0 && missingProducts.length === 0) {
+        Toast.success('Não há itens para cadastrar!');
+        return;
+    }
+
+    // Start with companies if there are any
+    if (missingCompanies.length > 0) {
+        await quickRegisterCompanies(missingCompanies);
+    }
+
+    // Then products
+    if (missingProducts.length > 0) {
+        await quickRegisterProducts(missingProducts);
+    }
+
+    // Refresh everything
+    await refreshDashboardStatus();
+    await loadCompanies();
+    await loadProducts();
+}
+
+async function quickRegisterCompanies(companies) {
+    for (const company of companies) {
+        const formHtml = `
+            <div class="form-group">
+                <label>Nome da Empresa (do XML)</label>
+                <input type="text" id="quickCompanyName" value="${escapeHtml(company.company_name)}" readonly style="background: var(--background);">
+            </div>
+            <div class="form-group">
+                <label for="quickCompanyReg">Registro MAPA Parcial da Empresa*</label>
+                <input type="text" id="quickCompanyReg" required placeholder="Ex: PR-12345" autofocus>
+                <small>Digite apenas a parte da empresa (sem o produto)</small>
+            </div>
+        `;
+
+        const confirmed = await showFormModal({
+            title: `Cadastrar Empresa (${companies.indexOf(company) + 1}/${companies.length})`,
+            content: formHtml,
+            confirmText: 'Cadastrar',
+            cancelText: 'Pular'
+        });
+
+        if (confirmed) {
+            const mapaReg = document.getElementById('quickCompanyReg').value.trim();
+            if (mapaReg) {
+                await createCompany(company.company_name, mapaReg);
+                // Update companies cache after creation
+                await loadCompanies();
+            }
+        }
+    }
+}
+
+async function quickRegisterProducts(products) {
+    // Group products by company
+    const productsByCompany = {};
+    for (const product of products) {
+        if (!productsByCompany[product.company_name]) {
+            productsByCompany[product.company_name] = [];
+        }
+        productsByCompany[product.company_name].push(product);
+    }
+
+    for (const [companyName, companyProducts] of Object.entries(productsByCompany)) {
+        // Find company ID
+        const company = companiesCache.find(c => c.company_name === companyName);
+        if (!company) {
+            Toast.warning(`Empresa "${companyName}" não encontrada. Cadastre a empresa primeiro.`);
+            continue;
+        }
+
+        for (const product of companyProducts) {
+            const formHtml = `
+                <div class="form-group">
+                    <label>Empresa</label>
+                    <input type="text" value="${escapeHtml(companyName)}" readonly style="background: var(--background);">
+                </div>
+                <div class="form-group">
+                    <label>Nome do Produto (do XML)</label>
+                    <input type="text" value="${escapeHtml(product.product_name)}" readonly style="background: var(--background);">
+                </div>
+                <div class="form-group">
+                    <label for="quickProductReg">Registro MAPA Parcial do Produto*</label>
+                    <input type="text" id="quickProductReg" required placeholder="Ex: 6.000001" autofocus>
+                    <small>Registro completo: ${company.mapa_registration}-<strong>[seu input]</strong></small>
+                </div>
+                <div class="form-group">
+                    <label for="quickProductRef">Referência (opcional)</label>
+                    <input type="text" id="quickProductRef" placeholder="Ex: Descrição amigável">
+                </div>
+            `;
+
+            const idx = products.indexOf(product);
+            const confirmed = await showFormModal({
+                title: `Cadastrar Produto (${idx + 1}/${products.length})`,
+                content: formHtml,
+                confirmText: 'Cadastrar',
+                cancelText: 'Pular'
+            });
+
+            if (confirmed) {
+                const mapaReg = document.getElementById('quickProductReg').value.trim();
+                const reference = document.getElementById('quickProductRef').value.trim();
+                if (mapaReg) {
+                    await createProduct(company.id, product.product_name, mapaReg, reference);
+                }
+            }
+        }
     }
 }
 
@@ -138,6 +425,7 @@ async function createCompany(companyName, mapaRegistration) {
         Toast.success('Empresa adicionada com sucesso!');
         await loadCompanies();
         await loadProducts(); // Refresh products as well
+        await refreshDashboardStatus();
 
     } catch (error) {
         console.error('Error creating company:', error);
@@ -191,6 +479,7 @@ async function editCompany(companyId) {
             Toast.success('Empresa atualizada com sucesso!');
             await loadCompanies();
             await loadProducts();
+            await refreshDashboardStatus();
 
         } catch (error) {
             console.error('Error updating company:', error);
@@ -221,6 +510,7 @@ async function deleteCompany(companyId) {
             Toast.success('Empresa deletada com sucesso!');
             await loadCompanies();
             await loadProducts();
+            await refreshDashboardStatus();
 
         } catch (error) {
             console.error('Error deleting company:', error);
@@ -355,6 +645,7 @@ async function createProduct(companyId, productName, mapaRegistration, productRe
 
         Toast.success('Produto adicionado com sucesso!');
         await loadProducts();
+        await refreshDashboardStatus();
 
     } catch (error) {
         console.error('Error creating product:', error);
@@ -425,6 +716,7 @@ async function editProduct(productId) {
 
             Toast.success('Produto atualizado com sucesso!');
             await loadProducts();
+            await refreshDashboardStatus();
         }
 
     } catch (error) {
@@ -451,6 +743,7 @@ async function deleteProduct(productId) {
 
             Toast.success('Produto deletado com sucesso!');
             await loadProducts();
+            await refreshDashboardStatus();
 
         } catch (error) {
             console.error('Error deleting product:', error);
@@ -888,9 +1181,10 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             // Reset form
             fileInput.value = '';
 
-            // Reload uploads after a short delay
+            // Reload uploads and dashboard after a short delay
             setTimeout(async () => {
                 await loadUploads();
+                await refreshDashboardStatus();
             }, 1000);
         } else {
             const error = await response.json();
@@ -1138,6 +1432,7 @@ async function deleteUpload(uploadId, filename) {
         if (response && response.ok) {
             Toast.success('Arquivo excluído com sucesso!');
             await loadUploads();
+            await refreshDashboardStatus();
         } else {
             const error = await response.json();
             Toast.error(error.detail || 'Erro ao excluir arquivo');
