@@ -5,29 +5,44 @@
 # ==========================================
 
 echo "🚀 Starting MAPA SaaS on Azure..."
+echo "Working directory: $(pwd)"
+echo "Python version: $(python --version)"
 
 set -e
 
 # Azure sets these automatically
 export PORT="${PORT:-8000}"
+export PYTHONUNBUFFERED=1
+
+# Navigate to app directory
+cd /home/site/wwwroot
 
 # Install dependencies if not present
 if [ ! -d "antenv" ]; then
     echo "📦 Creating virtual environment..."
     python -m venv antenv
+    echo "✅ Virtual environment created"
 fi
 
 echo "📦 Activating virtual environment..."
 source antenv/bin/activate
+echo "✅ Virtual environment activated"
 
-if [ ! -f "antenv/.installed" ]; then
-    echo "📦 Installing dependencies..."
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    touch antenv/.installed
-    echo "✅ Dependencies installed"
+# Check if we need to install dependencies
+REQUIREMENTS_HASH=$(md5sum requirements.txt | cut -d' ' -f1)
+INSTALLED_HASH=""
+if [ -f "antenv/.requirements_hash" ]; then
+    INSTALLED_HASH=$(cat antenv/.requirements_hash)
+fi
+
+if [ "$REQUIREMENTS_HASH" != "$INSTALLED_HASH" ]; then
+    echo "📦 Installing dependencies (requirements changed)..."
+    pip install --no-cache-dir --upgrade pip
+    pip install --no-cache-dir -r requirements.txt
+    echo "$REQUIREMENTS_HASH" > antenv/.requirements_hash
+    echo "✅ Dependencies installed successfully"
 else
-    echo "✅ Dependencies already installed"
+    echo "✅ Dependencies already installed (using cache)"
 fi
 
 # Create directories
