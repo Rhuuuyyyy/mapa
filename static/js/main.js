@@ -330,9 +330,78 @@ async function copyToClipboard(text) {
     }
 }
 
+// Form Modal (for catalog entry forms)
+function showFormModal(options) {
+    return new Promise((resolve) => {
+        const {
+            title = 'Formulário',
+            content = '',
+            confirmText = 'Confirmar',
+            cancelText = 'Cancelar'
+        } = options;
+
+        const modal = document.createElement('div');
+        modal.className = 'confirm-modal';
+
+        modal.innerHTML = `
+            <div class="confirm-modal-content" style="max-width: 600px;">
+                <h3 class="confirm-modal-title" style="text-align: left; margin-bottom: 20px;">${title}</h3>
+                <div class="modal-body" style="margin-bottom: 20px;">
+                    ${content}
+                </div>
+                <div class="confirm-modal-actions">
+                    <button class="btn btn-secondary" data-action="cancel">${cancelText}</button>
+                    <button class="btn btn-primary" data-action="confirm">${confirmText}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Focus on first input
+        setTimeout(() => {
+            const firstInput = modal.querySelector('input, select, textarea');
+            if (firstInput) firstInput.focus();
+        }, 100);
+
+        function cleanup(result) {
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.parentNode.removeChild(modal);
+                }
+                resolve(result);
+            }, 200);
+        }
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                cleanup(false);
+            }
+
+            const action = e.target.dataset.action;
+            if (action === 'confirm') {
+                cleanup(true);
+            } else if (action === 'cancel') {
+                cleanup(false);
+            }
+        });
+
+        // ESC key to cancel
+        function handleEscape(e) {
+            if (e.key === 'Escape') {
+                cleanup(false);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        }
+        document.addEventListener('keydown', handleEscape);
+    });
+}
+
 // Export utilities to window for use in other scripts
 window.Toast = Toast;
 window.showConfirmModal = showConfirmModal;
+window.showFormModal = showFormModal;
 window.setButtonLoading = setButtonLoading;
 window.uploadTracker = uploadTracker;
 window.setupDragAndDrop = setupDragAndDrop;
