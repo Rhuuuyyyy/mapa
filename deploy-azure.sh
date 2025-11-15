@@ -74,6 +74,16 @@ az webapp config set \
   --startup-file "startup-azure.sh" \
   > /dev/null
 
+# Disable Oryx build (we'll install dependencies at runtime)
+az webapp config appsettings set \
+  --resource-group $RESOURCE_GROUP \
+  --name $WEB_APP \
+  --settings \
+    SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+    ENABLE_ORYX_BUILD=false \
+    DISABLE_COLLECTSTATIC=1 \
+  > /dev/null
+
 echo -e "${GREEN}✓${NC} Azure configuration updated"
 
 echo -e "${YELLOW}Step 4/5:${NC} Deploying application..."
