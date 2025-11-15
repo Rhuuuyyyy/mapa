@@ -131,7 +131,60 @@ class ReportResponse(BaseModel):
         from_attributes = True
 
 
-# Raw Material Catalog Schemas
+# Company Schemas
+class CompanyBase(BaseModel):
+    company_name: str = Field(..., min_length=1, max_length=500, description="Nome da empresa conforme aparece no XML <emit><xNome>")
+    mapa_registration: str = Field(..., min_length=1, max_length=100, description="Registro MAPA parcial da empresa (ex: PR-12345)")
+
+
+class CompanyCreate(CompanyBase):
+    pass
+
+
+class CompanyUpdate(BaseModel):
+    company_name: Optional[str] = Field(None, min_length=1, max_length=500)
+    mapa_registration: Optional[str] = Field(None, min_length=1, max_length=100)
+
+
+class CompanyResponse(CompanyBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Product Schemas
+class ProductBase(BaseModel):
+    product_name: str = Field(..., min_length=1, max_length=500, description="Nome do produto conforme aparece no XML <prod><xProd>")
+    mapa_registration: str = Field(..., min_length=1, max_length=100, description="Registro MAPA parcial do produto (ex: 6.000001)")
+    product_reference: Optional[str] = Field(None, max_length=500, description="Referência ou nota opcional")
+
+
+class ProductCreate(ProductBase):
+    company_id: int = Field(..., description="ID da empresa à qual o produto pertence")
+
+
+class ProductUpdate(BaseModel):
+    product_name: Optional[str] = Field(None, min_length=1, max_length=500)
+    mapa_registration: Optional[str] = Field(None, min_length=1, max_length=100)
+    product_reference: Optional[str] = Field(None, max_length=500)
+    company_id: Optional[int] = None
+
+
+class ProductResponse(ProductBase):
+    id: int
+    company_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Raw Material Catalog Schemas (DEPRECATED - use Company/Product instead)
 class CatalogEntryBase(BaseModel):
     product_name: str = Field(..., min_length=1, max_length=500, description="Nome exato do produto conforme aparece no XML <xProd>")
     mapa_registration: str = Field(..., min_length=1, max_length=100, description="Número de Registro MAPA completo (ex: RS-003295-9.000007)")

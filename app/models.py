@@ -53,10 +53,54 @@ class Report(Base):
     xml_upload = relationship("XMLUpload", back_populates="report")
 
 
+class Company(Base):
+    """
+    Cadastro de Empresas (Company Registry).
+
+    Stores company information with partial MAPA registration.
+    Example: company_name = "Empresa XYZ", mapa_registration = "PR-12345"
+    """
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    company_name = Column(String(500), nullable=False, index=True)  # From XML <emit><xNome>
+    mapa_registration = Column(String(100), nullable=False)  # Partial registration (e.g., "PR-12345")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="companies")
+    products = relationship("Product", back_populates="company", cascade="all, delete-orphan")
+
+
+class Product(Base):
+    """
+    Cadastro de Produtos (Product Registry).
+
+    Stores products linked to companies with partial MAPA registration.
+    Example: product_name = "UREIA GRANULADA", mapa_registration = "6.000001"
+    Full registration = company.mapa_registration + "-" + product.mapa_registration
+    """
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    product_name = Column(String(500), nullable=False, index=True)  # From XML <prod><xProd>
+    mapa_registration = Column(String(100), nullable=False)  # Partial registration (e.g., "6.000001")
+    product_reference = Column(String(500))  # Optional notes/reference
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", back_populates="products")
+
+
 class RawMaterialCatalog(Base):
     """
-    Catálogo Mestre de Matérias-Primas (Raw Material Master Catalog).
+    DEPRECATED - Use Company and Product models instead.
 
+    Catálogo Mestre de Matérias-Primas (Raw Material Master Catalog).
     Maps product names (from XML <xProd>) to MAPA registration numbers.
     User-defined mappings to avoid unreliable automatic registration extraction.
     """

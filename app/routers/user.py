@@ -6,10 +6,12 @@ import os
 import shutil
 from datetime import datetime
 from ..database import get_db
-from ..models import User, XMLUpload, Report, RawMaterialCatalog
+from ..models import User, XMLUpload, Report, RawMaterialCatalog, Company, Product
 from ..schemas import (
     UserResponse, XMLUploadResponse, ReportResponse,
-    CatalogEntryCreate, CatalogEntryUpdate, CatalogEntryResponse
+    CatalogEntryCreate, CatalogEntryUpdate, CatalogEntryResponse,
+    CompanyCreate, CompanyUpdate, CompanyResponse,
+    ProductCreate, ProductUpdate, ProductResponse
 )
 from ..auth import get_current_user
 from ..utils.nfe_processor import NFeProcessor
@@ -211,24 +213,26 @@ async def generate_mapa_report(
         # Process NFes with new catalog-based logic
         result = processor_v2.process_nfes(nfe_list)
 
-        # Check for unregistered products (ERROR CASE)
+        # Check for unregistered companies/products (ERROR CASE)
         if not result.success:
-            # Return detailed error with unregistered products list
+            # Return detailed error with unregistered entries list
             unregistered_list = [
                 {
-                    "product_name": up.product_name,
-                    "nfe_number": up.nfe_number,
-                    "quantity": str(up.quantity),
-                    "unit": up.unit
+                    "error_type": entry.error_type,
+                    "company_name": entry.company_name,
+                    "product_name": entry.product_name,
+                    "nfe_number": entry.nfe_number,
+                    "quantity": str(entry.quantity),
+                    "unit": entry.unit
                 }
-                for up in result.unregistered_products
+                for entry in result.unregistered_entries
             ]
 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "error": result.error_message,
-                    "unregistered_products": unregistered_list
+                    "unregistered_entries": unregistered_list
                 }
             )
 
@@ -375,7 +379,474 @@ async def delete_report(
 
 
 # ============================================================================
-# RAW MATERIAL CATALOG ENDPOINTS
+# COMPANY ENDPOINTS (Cadastro de Empresas)
+# ============================================================================
+
+@router.get("/companies", response_model=List[CompanyResponse])
+async def list_companies(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Listar todas as empresas cadastradas pelo usuário.
+    """
+    companies = db.query(Company).filter(
+        Company.user_id == current_user.id
+    ).order_by(Company.company_name).offset(skip).limit(limit).all()
+
+    return companies
+
+
+@router.post("/companies", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
+async def create_company(
+    company: CompanyCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Criar nova empresa com registro MAPA parcial.
+
+    Exemplo:
+    - Nome: "Empresa ABC Ltda"
+    - Registro MAPA: "PR-12345"
+    """
+    # Check for duplicate company_name for this user
+    existing = db.query(Company).filter(
+        Company.user_id == current_user.id,
+        Company.company_name == company.company_name
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Empresa '{company.company_name}' já existe no seu cadastro."
+        )
+
+    # Create new company
+    new_company = Company(
+        user_id=current_user.id,
+        company_name=company.company_name,
+        mapa_registration=company.mapa_registration
+    )
+
+    db.add(new_company)
+    db.commit()
+    db.refresh(new_company)
+
+    return new_company
+
+
+@router.put("/companies/{company_id}", response_model=CompanyResponse)
+async def update_company(
+    company_id: int,
+    company_update: CompanyUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Atualizar empresa existente.
+    """
+    # Get company
+    company = db.query(Company).filter(
+        Company.id == company_id,
+        Company.user_id == current_user.id
+    ).first()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada."
+        )
+
+    # Update fields
+    if company_update.company_name is not None:
+        company.company_name = company_update.company_name
+    if company_update.mapa_registration is not None:
+        company.mapa_registration = company_update.mapa_registration
+
+    db.commit()
+    db.refresh(company)
+
+    return company
+
+
+@router.delete("/companies/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_company(
+    company_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deletar empresa.
+    Também deleta todos os produtos vinculados (cascade).
+    """
+    # Get company
+    company = db.query(Company).filter(
+        Company.id == company_id,
+        Company.user_id == current_user.id
+    ).first()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada."
+        )
+
+    db.delete(company)
+    db.commit()
+
+    return None
+
+
+# ============================================================================
+# PRODUCT ENDPOINTS (Cadastro de Produtos)
+# ============================================================================
+
+@router.get("/products", response_model=List[ProductResponse])
+async def list_products(
+    company_id: int = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Listar produtos cadastrados.
+
+    Opcionalmente filtrar por company_id para ver apenas produtos de uma empresa.
+    """
+    query = db.query(Product).join(Company).filter(
+        Company.user_id == current_user.id
+    )
+
+    if company_id is not None:
+        query = query.filter(Product.company_id == company_id)
+
+    products = query.order_by(Product.product_name).offset(skip).limit(limit).all()
+
+    return products
+
+
+@router.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+async def create_product(
+    product: ProductCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Criar novo produto vinculado a uma empresa.
+
+    Exemplo:
+    - Nome: "UREIA GRANULADA"
+    - Registro MAPA: "6.000001"
+    - company_id: 1
+
+    Registro completo será: company.mapa_registration + "-" + product.mapa_registration
+    """
+    # Verify company belongs to user
+    company = db.query(Company).filter(
+        Company.id == product.company_id,
+        Company.user_id == current_user.id
+    ).first()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada ou não pertence ao usuário."
+        )
+
+    # Check for duplicate product_name within the same company
+    existing = db.query(Product).filter(
+        Product.company_id == product.company_id,
+        Product.product_name == product.product_name
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Produto '{product.product_name}' já existe nesta empresa."
+        )
+
+    # Create new product
+    new_product = Product(
+        company_id=product.company_id,
+        product_name=product.product_name,
+        mapa_registration=product.mapa_registration,
+        product_reference=product.product_reference
+    )
+
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+
+    return new_product
+
+
+@router.put("/products/{product_id}", response_model=ProductResponse)
+async def update_product(
+    product_id: int,
+    product_update: ProductUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Atualizar produto existente.
+    """
+    # Get product and verify ownership through company
+    product = db.query(Product).join(Company).filter(
+        Product.id == product_id,
+        Company.user_id == current_user.id
+    ).first()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado."
+        )
+
+    # Update fields
+    if product_update.product_name is not None:
+        product.product_name = product_update.product_name
+    if product_update.mapa_registration is not None:
+        product.mapa_registration = product_update.mapa_registration
+    if product_update.product_reference is not None:
+        product.product_reference = product_update.product_reference
+    if product_update.company_id is not None:
+        # Verify new company belongs to user
+        company = db.query(Company).filter(
+            Company.id == product_update.company_id,
+            Company.user_id == current_user.id
+        ).first()
+        if not company:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Empresa de destino não encontrada."
+            )
+        product.company_id = product_update.company_id
+
+    db.commit()
+    db.refresh(product)
+
+    return product
+
+
+@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deletar produto.
+    """
+    # Get product and verify ownership through company
+    product = db.query(Product).join(Company).filter(
+        Product.id == product_id,
+        Company.user_id == current_user.id
+    ).first()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado."
+        )
+
+    db.delete(product)
+    db.commit()
+
+    return None
+
+
+# ============================================================================
+# SMART WORKFLOW ENDPOINTS (Dashboard & Analysis)
+# ============================================================================
+
+@router.get("/dashboard-status")
+async def get_dashboard_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retorna estatísticas do dashboard para o usuário.
+
+    Mostra quantas empresas, produtos e XMLs foram processados,
+    permitindo que o usuário veja o progresso antes de gerar relatório.
+    """
+    # Count companies
+    total_companies = db.query(Company).filter(
+        Company.user_id == current_user.id
+    ).count()
+
+    # Count products
+    total_products = db.query(Product).join(Company).filter(
+        Company.user_id == current_user.id
+    ).count()
+
+    # Count processed uploads
+    total_uploads = db.query(XMLUpload).filter(
+        XMLUpload.user_id == current_user.id,
+        XMLUpload.status == "processed"
+    ).count()
+
+    # Analyze what's missing
+    missing_analysis = await analyze_missing_items(db, current_user)
+
+    return {
+        "companies": {
+            "registered": total_companies,
+            "required": missing_analysis["total_companies_needed"],
+            "missing": missing_analysis["missing_companies_count"]
+        },
+        "products": {
+            "registered": total_products,
+            "required": missing_analysis["total_products_needed"],
+            "missing": missing_analysis["missing_products_count"]
+        },
+        "uploads": {
+            "total": total_uploads,
+            "processed": total_uploads
+        },
+        "ready_to_generate": missing_analysis["ready"]
+    }
+
+
+@router.get("/analyze-missing")
+async def get_missing_items(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Analisa todos os XMLs processados e retorna empresas/produtos
+    que ainda não foram cadastrados.
+
+    Permite cadastro rápido dos itens faltantes.
+    """
+    analysis = await analyze_missing_items(db, current_user)
+
+    return {
+        "missing_companies": analysis["missing_companies"],
+        "missing_products": analysis["missing_products"],
+        "ready": analysis["ready"],
+        "message": analysis["message"]
+    }
+
+
+async def analyze_missing_items(db: Session, current_user: User):
+    """
+    Helper function to analyze uploaded XMLs and find missing items.
+    """
+    # Get all processed uploads
+    uploads = db.query(XMLUpload).filter(
+        XMLUpload.user_id == current_user.id,
+        XMLUpload.status == "processed"
+    ).all()
+
+    if not uploads:
+        return {
+            "total_companies_needed": 0,
+            "total_products_needed": 0,
+            "missing_companies_count": 0,
+            "missing_products_count": 0,
+            "missing_companies": [],
+            "missing_products": [],
+            "ready": False,
+            "message": "Nenhum XML processado ainda. Faça upload de arquivos primeiro."
+        }
+
+    # Extract unique companies and products from XMLs
+    companies_in_xmls = set()
+    products_in_xmls = set()  # (company_name, product_name) tuples
+
+    for upload in uploads:
+        try:
+            file_ext = upload.filename.lower().split('.')[-1]
+            if file_ext == 'xml':
+                processor = NFeProcessor(upload.file_path)
+            else:
+                processor = NFePDFProcessor(upload.file_path)
+
+            nfe_data = processor.extract_all_data()
+
+            # Extract company name
+            if nfe_data.emitente and nfe_data.emitente.razao_social:
+                company_name = nfe_data.emitente.razao_social.strip()
+                companies_in_xmls.add(company_name)
+
+                # Extract products for this company
+                for produto in nfe_data.produtos:
+                    if produto.descricao:
+                        product_name = produto.descricao.strip()
+                        products_in_xmls.add((company_name, product_name))
+
+        except Exception as e:
+            # Skip problematic files
+            continue
+
+    # Check what's registered
+    registered_companies = {
+        c.company_name for c in db.query(Company).filter(
+            Company.user_id == current_user.id
+        ).all()
+    }
+
+    # Get all registered products with their companies
+    registered_products_query = db.query(Product, Company).join(
+        Company, Product.company_id == Company.id
+    ).filter(
+        Company.user_id == current_user.id
+    ).all()
+
+    registered_products = {
+        (company.company_name, product.product_name)
+        for product, company in registered_products_query
+    }
+
+    # Find missing items
+    missing_companies = companies_in_xmls - registered_companies
+    missing_products = products_in_xmls - registered_products
+
+    # Filter out products from missing companies
+    # (we'll suggest registering company first)
+    missing_products_filtered = [
+        (comp, prod) for comp, prod in missing_products
+        if comp not in missing_companies
+    ]
+
+    missing_companies_list = [
+        {"company_name": comp} for comp in sorted(missing_companies)
+    ]
+
+    missing_products_list = [
+        {
+            "company_name": comp,
+            "product_name": prod
+        }
+        for comp, prod in sorted(missing_products_filtered)
+    ]
+
+    ready = len(missing_companies) == 0 and len(missing_products_filtered) == 0
+
+    if ready:
+        message = "✅ Tudo cadastrado! Você pode gerar o relatório."
+    else:
+        message = f"⚠️ Faltam {len(missing_companies)} empresa(s) e {len(missing_products_filtered)} produto(s)."
+
+    return {
+        "total_companies_needed": len(companies_in_xmls),
+        "total_products_needed": len(products_in_xmls),
+        "missing_companies_count": len(missing_companies),
+        "missing_products_count": len(missing_products_filtered),
+        "missing_companies": missing_companies_list,
+        "missing_products": missing_products_list,
+        "ready": ready,
+        "message": message
+    }
+
+
+# ============================================================================
+# RAW MATERIAL CATALOG ENDPOINTS (DEPRECATED)
 # ============================================================================
 
 @router.get("/catalog", response_model=List[CatalogEntryResponse])
