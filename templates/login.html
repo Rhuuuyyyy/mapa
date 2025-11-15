@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Login - MAPA SaaS{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <h2>Login</h2>
+        <p class="subtitle">Entre com suas credenciais</p>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Entrar</button>
+
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('errorMessage');
+    const successDiv = document.getElementById('successMessage');
+
+    // Limpar mensagens
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+
+    try {
+        // Fazer login
+        const formData = new URLSearchParams();
+        formData.append('username', email);
+        formData.append('password', password);
+
+        const response = await fetch('/api/admin/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Erro ao fazer login');
+        }
+
+        const data = await response.json();
+
+        // Salvar token
+        localStorage.setItem('access_token', data.access_token);
+
+        // Buscar info do usuário
+        const meResponse = await fetch('/api/admin/me', {
+            headers: {
+                'Authorization': `Bearer ${data.access_token}`
+            }
+        });
+
+        const userInfo = await meResponse.json();
+
+        // Redirecionar baseado no tipo
+        if (userInfo.is_admin) {
+            window.location.href = '/admin_dashboard.html';
+        } else {
+            window.location.href = '/user_dashboard.html';
+        }
+
+    } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

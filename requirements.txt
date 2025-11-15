@@ -1,0 +1,34 @@
+# ============================================================================
+# MAPA SaaS v2.0.0 - Python Dependencies
+# Apenas o essencial para produção
+# ============================================================================
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+gunicorn==21.2.0
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+slowapi==0.1.9
+python-magic==0.4.27
+
+# Configuration
+python-dotenv==1.0.0
+pydantic-settings==2.1.0
+
+# Data Processing
+lxml==4.9.3
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+pandas==2.1.3
+openpyxl==3.1.2
+
+# Templates
+jinja2==3.1.2
