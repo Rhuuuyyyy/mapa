@@ -1,935 +1,662 @@
-# 📊 MAPA SaaS - Automação de Relatórios Trimestrais
+# 🚀 Relatório de Implantação e Manual de Manutenção - MAPA SaaS
 
-<div align="center">
+**Sistema de Automação de Relatórios Trimestrais do MAPA**
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
+[![Azure](https://img.shields.io/badge/Azure-App%20Service-blue.svg)](https://azure.microsoft.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-blue.svg)](https://www.postgresql.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
 
-**Sistema completo de automação para geração de relatórios trimestrais do MAPA (Ministério da Agricultura, Pecuária e Abastecimento) a partir de Notas Fiscais Eletrônicas.**
-
-[Características](#-características) • [Instalação](#-instalação-completa) • [Uso](#-como-usar) • [Deploy](#-deploy-azure) • [Suporte](#-suporte)
-
-</div>
+**Versão:** 1.0.0  
+**Última Atualização:** 12 de Janeiro de 2025  
+**Responsável:** Rhyan Rocha (rhyan.hdr@gmail.com)
 
 ---
 
 ## 📋 Índice
 
-- [Sobre o Projeto](#-sobre-o-projeto)
-- [Características](#-características)
-- [Tecnologias](#-tecnologias-utilizadas)
-- [Requisitos do Sistema](#-requisitos-do-sistema)
-- [Instalação Completa](#-instalação-completa)
-  - [Windows](#-instalação-no-windows)
-  - [Linux/Mac](#-instalação-no-linuxmac)
-- [Configuração](#-configuração)
-- [Como Usar](#-como-usar)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [API Documentação](#-documentação-da-api)
-- [Deploy no Azure](#-deploy-no-azure)
-- [Troubleshooting](#-solução-de-problemas)
-- [FAQ](#-perguntas-frequentes)
-- [Contribuindo](#-contribuindo)
-- [Licença](#-licença)
+- [I. Informações Críticas da Infraestrutura](#i-informações-críticas-da-infraestrutura)
+- [II. Gerenciamento e Monitoramento de Custos](#ii-gerenciamento-e-monitoramento-de-custos)
+- [III. Manutenção e Atualização da Aplicação](#iii-manutenção-e-atualização-da-aplicação)
+- [IV. Gerenciamento do Banco de Dados](#iv-gerenciamento-do-banco-de-dados)
+- [V. Logs e Diagnóstico de Falhas](#v-logs-e-diagnóstico-de-falhas)
+- [VI. Configuração em Novos Computadores](#vi-configuração-em-novos-computadores)
+- [VII. Backup e Recuperação](#vii-backup-e-recuperação)
+- [VIII. Segurança e Boas Práticas](#viii-segurança-e-boas-práticas)
+- [IX. Monitoramento e Performance](#ix-monitoramento-e-performance)
+- [X. Procedimentos de Emergência](#x-procedimentos-de-emergência)
 
 ---
 
-## 🎯 Sobre o Projeto
+## I. Informações Críticas da Infraestrutura
 
-O **MAPA SaaS** é uma solução web desenvolvida para automatizar a geração de relatórios trimestrais exigidos pelo Ministério da Agricultura (MAPA) para empresas que trabalham com fertilizantes.
+### 🔐 Credenciais e Endpoints
 
-### 🎪 O Problema
+**⚠️ ATENÇÃO: As informações abaixo são CONFIDENCIAIS. Trate com segurança máxima!**
 
-Empresas de fertilizantes precisam enviar relatórios trimestrais ao MAPA contendo informações detalhadas sobre produção, importação e comercialização de produtos. Este processo manual é:
+#### **Recursos Azure - Geral**
 
-- ⏰ **Demorado** - Horas de trabalho manual
-- 🐛 **Propenso a erros** - Digitação e formatação incorretas
-- 📄 **Complexo** - Múltiplas NF-es e dados a consolidar
+| Categoria | Recurso | Valor |
+|-----------|---------|-------|
+| **Grupo de Recursos** | Nome | `mapa-saas-rg` |
+| | Localização | `brazilsouth` (Sul do Brasil) |
+| | Subscription ID | Execute: `az account show --query id -o tsv` |
 
-### 💡 A Solução
+#### **Web App (App Service)**
 
-Este sistema automatiza **100% do processo**:
+| Item | Valor |
+|------|-------|
+| **Nome do Web App** | `mapa-saas-app-1762971490` |
+| **URL de Produção** | https://mapa-saas-app-1762971490.azurewebsites.net |
+| **URL Kudu** | https://mapa-saas-app-1762971490.scm.azurewebsites.net |
+| **Runtime** | `PYTHON:3.11` |
+| **App Service Plan** | `mapa-saas-plan` |
+| **SKU** | `B1` (Basic) - ~$13 USD/mês |
 
-1. 📤 **Upload** de NF-es (XML ou PDF)
-2. ⚙️ **Processamento automático** dos dados
-3. 📊 **Geração** do relatório no formato oficial MAPA
-4. 📥 **Download** do arquivo Excel pronto para envio
+#### **Banco de Dados PostgreSQL**
+
+| Item | Valor |
+|------|-------|
+| **Servidor** | `mapa-saas-db-1762971848` |
+| **Host Completo** | `mapa-saas-db-1762971848.postgres.database.azure.com` |
+| **Banco de Dados** | `mapa_saas` |
+| **Usuário Admin** | `mapaadmin` |
+| **Senha Admin** | `NovaSenha12345!` ⚠️ |
+| **Porta** | `5432` |
+| **SSL Mode** | `require` (Obrigatório) |
+| **Versão** | PostgreSQL 14 |
+| **SKU** | `Standard_B1ms` - ~$12 USD/mês |
+
+#### **String de Conexão Completa**
+```bash
+DATABASE_URL="postgresql://mapaadmin:NovaSenha12345!@mapa-saas-db-1762971848.postgres.database.azure.com:5432/mapa_saas?sslmode=require"
+```
+
+#### **Variáveis de Ambiente (App Settings)**
+
+| Variável | Valor | Descrição |
+|----------|-------|-----------|
+| `DATABASE_URL` | Ver acima | String de conexão PostgreSQL |
+| `SECRET_KEY` | Gerado automaticamente | Chave JWT (32+ caracteres) |
+| `ALGORITHM` | `HS256` | Algoritmo de criptografia JWT |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Tempo de expiração do token |
+| `DEBUG` | `False` | ⚠️ Sempre False em produção |
+| `ALLOWED_ORIGINS` | `https://mapa-saas-app-1762971490.azurewebsites.net` | CORS |
+| `WEBSITES_PORT` | `8000` | Porta interna do container |
+| `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` | Build automático no deploy |
+
+#### **Usuário Admin da Aplicação**
+
+| Item | Valor |
+|------|-------|
+| **E-mail** | `rhyan.hdr@gmail.com` |
+| **Senha** | Definida via `create_admin.py` |
+| **Tipo** | Administrador (is_admin=true) |
+
+### 🔗 Links Rápidos de Acesso
+
+| Serviço | URL | Uso |
+|---------|-----|-----|
+| **Portal Azure** | https://portal.azure.com | Gerenciamento visual |
+| **Aplicação (Produção)** | https://mapa-saas-app-1762971490.azurewebsites.net | Sistema público |
+| **API Docs (Swagger)** | https://mapa-saas-app-1762971490.azurewebsites.net/docs | API interativa |
+| **API Docs (ReDoc)** | https://mapa-saas-app-1762971490.azurewebsites.net/redoc | Documentação alternativa |
+| **Health Check** | https://mapa-saas-app-1762971490.azurewebsites.net/health | Verificar status |
+| **Kudu Console** | https://mapa-saas-app-1762971490.scm.azurewebsites.net | Console web avançado |
+| **WebSSH** | https://mapa-saas-app-1762971490.scm.azurewebsites.net/webssh/host | Terminal web |
+| **Log Stream** | https://mapa-saas-app-1762971490.scm.azurewebsites.net/api/logstream | Logs em tempo real |
+
+### 📚 Documentação Oficial
+
+- [Azure App Service](https://docs.microsoft.com/azure/app-service/)
+- [Azure PostgreSQL Flexible](https://docs.microsoft.com/azure/postgresql/flexible-server/)
+- [Azure CLI](https://docs.microsoft.com/cli/azure/)
+- [FastAPI Docs](https://fastapi.tiangolo.com/)
 
 ---
 
-## ✨ Características
+## II. Gerenciamento e Monitoramento de Custos
 
-### 🔐 **Sistema de Autenticação**
-- Login seguro com JWT
-- Dois níveis de acesso: Admin e Usuário
-- Gerenciamento completo de contas
+### 💰 Estimativa de Custos Mensais
 
-### 📄 **Processamento Inteligente de NF-e**
-- ✅ Suporte para **XML** (formato padrão NF-e)
-- ✅ Suporte para **PDF** (DANFE)
-- ✅ Extração automática de:
-  - Dados do emitente e destinatário
-  - Produtos e garantias (nutrientes)
-  - Quantidades e valores
-  - Registro MAPA
-  - Chave de acesso
+| Recurso | SKU | Custo (USD/mês) | Custo (BRL/mês) |
+|---------|-----|-----------------|-----------------|
+| **App Service Plan** | B1 (Basic) | ~$13.00 | ~R$ 65,00 |
+| **PostgreSQL Flexible** | B1ms (Burstable) | ~$12.00 | ~R$ 60,00 |
+| **Storage** | Pay-as-you-go | ~$0.50 | ~R$ 2,50 |
+| **Bandwidth** | Primeiro 100GB grátis | ~$0.00 | ~R$ 0,00 |
+| **TOTAL ESTIMADO** | | **~$25.50** | **~R$ 127,50** |
 
-### 📊 **Geração de Relatórios MAPA**
-- Formato **oficial** do MAPA
-- Exportação em **Excel (.xlsx)**
-- Agrupamento por **trimestre**
-- Pronto para **envio**
+*Conversão aproximada: $1 USD = R$ 5,00*
 
-### 🎨 **Interface Moderna**
-- Design limpo e intuitivo
-- Responsivo (funciona em celular/tablet)
-- Drag & Drop para upload
-- Feedback visual em tempo real
+### 📊 1. Visualizar Custos no Portal Azure
 
-### 🔒 **Segurança**
-- Senhas criptografadas (bcrypt)
-- Tokens JWT com expiração
-- Isolamento de dados por usuário
-- Validação de arquivos
+#### **Passo a passo:**
 
----
+1. Acesse: https://portal.azure.com
+2. No menu lateral, busque **"Cost Management + Billing"**
+3. Selecione **"Cost Analysis"** (Análise de Custo)
+4. Aplique filtro:
+   - **Resource Group**: `mapa-saas-rg`
+   - **Time Range**: Last 30 days
+5. Visualize:
+   - Gráfico de custos por serviço
+   - Tendências de gastos
+   - Previsão mensal
 
-## 🛠️ Tecnologias Utilizadas
-
-### Backend
-- **[FastAPI](https://fastapi.tiangolo.com/)** - Framework web moderno e rápido
-- **[SQLAlchemy](https://www.sqlalchemy.org/)** - ORM para banco de dados
-- **[PostgreSQL](https://www.postgresql.org/)** - Banco de dados relacional
-- **[Pydantic](https://pydantic-docs.helpmanual.io/)** - Validação de dados
-- **[lxml](https://lxml.de/)** - Processamento de XML
-- **[pdfplumber](https://github.com/jsvine/pdfplumber)** - Extração de texto de PDF
-- **[openpyxl](https://openpyxl.readthedocs.io/)** - Geração de arquivos Excel
-
-### Frontend
-- **HTML5/CSS3/JavaScript** - Interface pura e leve
-- **Design System** próprio
-
-### Autenticação
-- **[python-jose](https://github.com/mpdavis/python-jose)** - JWT
-- **[passlib](https://passlib.readthedocs.io/)** - Hash de senhas
-
----
-
-## 💻 Requisitos do Sistema
-
-### Requisitos Mínimos
-
-| Componente | Versão Mínima |
-|------------|---------------|
-| Python | 3.9+ |
-| PostgreSQL | 12+ |
-| RAM | 2GB |
-| Disco | 5GB livre |
-| Sistema Operacional | Windows 10, Linux, macOS |
-
-### Softwares Necessários
-
-1. **Python 3.9 ou superior**
-   - [Download Windows](https://www.python.org/downloads/windows/)
-   - Linux: `sudo apt install python3.9 python3-pip`
-   - macOS: `brew install python@3.9`
-
-2. **PostgreSQL 12 ou superior**
-   - [Download Windows](https://www.postgresql.org/download/windows/)
-   - Linux: `sudo apt install postgresql postgresql-contrib`
-   - macOS: `brew install postgresql`
-
-3. **Git** (opcional, mas recomendado)
-   - [Download](https://git-scm.com/downloads)
-
----
-
-## 🚀 Instalação Completa
-
-### 📦 Instalação no Windows
-
-#### **Passo 1: Instalar Python**
-
-1. Baixe o Python 3.9+ em [python.org](https://www.python.org/downloads/)
-2. **IMPORTANTE**: Marque a opção "Add Python to PATH"
-3. Clique em "Install Now"
-4. Verifique a instalação:
-```cmd
-   python --version
-   pip --version
-```
-
-#### **Passo 2: Instalar PostgreSQL**
-
-1. Baixe o PostgreSQL em [postgresql.org](https://www.postgresql.org/download/windows/)
-2. Execute o instalador
-3. **Anote a senha** do usuário `postgres`
-4. Mantenha a porta padrão `5432`
-5. Verifique a instalação:
-```cmd
-   psql --version
-```
-
-#### **Passo 3: Criar Banco de Dados**
-
-1. Abra o **pgAdmin 4** (instalado com o PostgreSQL)
-2. Conecte ao servidor local
-3. Clique com botão direito em "Databases" → "Create" → "Database"
-4. Nome: `mapa_saas`
-5. Owner: `postgres`
-6. Clique em "Save"
-
-**OU via linha de comando:**
-```cmd
-# Abra o PostgreSQL Shell (psql)
-# Windows: Procure por "SQL Shell (psql)" no menu Iniciar
-
-# Login (pressione Enter para usar valores padrão)
-Server: localhost
-Database: postgres
-Port: 5432
-Username: postgres
-Password: [sua senha]
-
-# Crie o banco de dados
-CREATE DATABASE mapa_saas;
-
-# Verifique
-\l
-
-# Sair
-\q
-```
-
-#### **Passo 4: Baixar o Projeto**
-
-**Opção A - Com Git:**
-```cmd
-cd C:\
-git clone [URL_DO_REPOSITORIO] mapa-saas
-cd mapa-saas
-```
-
-**Opção B - Download Manual:**
-1. Baixe o ZIP do projeto
-2. Extraia em `C:\mapa-saas`
-3. Abra o CMD e navegue até a pasta:
-```cmd
-   cd C:\mapa-saas
-```
-
-#### **Passo 5: Criar Ambiente Virtual**
-```cmd
-# Criar ambiente virtual
-python -m venv venv
-
-# Ativar ambiente virtual
-venv\Scripts\activate
-
-# Você verá (venv) no início da linha
-```
-
-#### **Passo 6: Instalar Dependências**
-```cmd
-# Com o ambiente virtual ativado
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# Aguarde a instalação (2-5 minutos)
-```
-
-#### **Passo 7: Configurar Variáveis de Ambiente**
-```cmd
-# Copiar arquivo de exemplo
-copy .env.example .env
-
-# Editar o arquivo .env
-notepad .env
-```
-
-Edite o arquivo `.env` com suas configurações:
-```env
-# Database Configuration
-DATABASE_URL=postgresql://postgres:SUA_SENHA_AQUI@localhost:5432/mapa_saas
-
-# Security (gere uma chave segura)
-SECRET_KEY=sua-chave-secreta-muito-longa-e-aleatoria-aqui
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Application
-DEBUG=True
-ALLOWED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
-```
-
-**📌 Como gerar uma SECRET_KEY segura:**
-```cmd
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-
-Copie o resultado e cole em `SECRET_KEY` no arquivo `.env`
-
-#### **Passo 8: Criar Usuário Administrador**
-```cmd
-python create_admin.py
-```
-
-Preencha os dados:
-```
-Nome completo: Administrador Sistema
-E-mail: admin@empresa.com
-Senha: Admin@123456
-```
-
-✅ Anote essas credenciais!
-
-#### **Passo 9: Iniciar o Servidor**
-```cmd
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Você verá:
-```
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process
-INFO:     Started server process
-INFO:     Application startup complete.
-```
-
-#### **Passo 10: Acessar o Sistema**
-
-1. Abra seu navegador
-2. Acesse: **http://localhost:8000**
-3. Faça login com as credenciais do admin
-4. 🎉 **Pronto!**
-
----
-
-### 🐧 Instalação no Linux/Mac
-
-#### **Passo 1: Atualizar Sistema**
+#### **Via Azure CLI:**
 ```bash
-# Ubuntu/Debian
-sudo apt update && sudo apt upgrade -y
+# Ver custos do mês atual
+az consumption usage list \
+  --start-date $(date -d "1 month ago" +%Y-%m-%d) \
+  --end-date $(date +%Y-%m-%d) \
+  --output table
 
-# macOS (com Homebrew)
-brew update
-```
-
-#### **Passo 2: Instalar Python e PostgreSQL**
-
-**Ubuntu/Debian:**
-```bash
-sudo apt install python3.9 python3-pip python3-venv postgresql postgresql-contrib -y
-```
-
-**macOS:**
-```bash
-brew install python@3.9 postgresql
-```
-
-#### **Passo 3: Iniciar PostgreSQL**
-
-**Ubuntu/Debian:**
-```bash
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-```
-
-**macOS:**
-```bash
-brew services start postgresql
-```
-
-#### **Passo 4: Criar Banco de Dados**
-```bash
-# Entrar no PostgreSQL
-sudo -u postgres psql
-
-# Criar banco de dados
-CREATE DATABASE mapa_saas;
-
-# Criar usuário (opcional)
-CREATE USER mapa_user WITH PASSWORD 'senha_segura';
-GRANT ALL PRIVILEGES ON DATABASE mapa_saas TO mapa_user;
-
-# Sair
-\q
-```
-
-#### **Passo 5: Clonar Projeto**
-```bash
-cd ~
-git clone [URL_DO_REPOSITORIO] mapa-saas
-cd mapa-saas
-```
-
-#### **Passo 6: Criar Ambiente Virtual**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-#### **Passo 7: Instalar Dependências**
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-#### **Passo 8: Configurar .env**
-```bash
-cp .env.example .env
-nano .env  # ou vim .env
-```
-
-Configure conforme necessário:
-```env
-DATABASE_URL=postgresql://postgres:senha@localhost:5432/mapa_saas
-SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-DEBUG=True
-ALLOWED_ORIGINS=http://localhost:8000
-```
-
-#### **Passo 9: Criar Admin**
-```bash
-python create_admin.py
-```
-
-#### **Passo 10: Iniciar Servidor**
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-#### **Passo 11: Acessar**
-
-Abra: **http://localhost:8000**
-
----
-
-## ⚙️ Configuração
-
-### Variáveis de Ambiente
-
-| Variável | Descrição | Exemplo |
-|----------|-----------|---------|
-| `DATABASE_URL` | URL de conexão PostgreSQL | `postgresql://user:pass@localhost:5432/db` |
-| `SECRET_KEY` | Chave secreta para JWT | `gerar com secrets.token_urlsafe(32)` |
-| `ALGORITHM` | Algoritmo de criptografia | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Tempo de expiração do token | `30` |
-| `DEBUG` | Modo de desenvolvimento | `True` ou `False` |
-| `ALLOWED_ORIGINS` | Origens permitidas (CORS) | `http://localhost:8000` |
-
-### Configuração de Produção
-
-Para ambiente de produção, modifique o `.env`:
-```env
-DEBUG=False
-DATABASE_URL=postgresql://user:pass@servidor-prod.com:5432/mapa_saas
-ALLOWED_ORIGINS=https://seudominio.com
-```
-
----
-
-## 📖 Como Usar
-
-### 1️⃣ **Login como Administrador**
-
-1. Acesse http://localhost:8000
-2. Faça login com as credenciais do admin
-3. Você será redirecionado para `/admin`
-
-### 2️⃣ **Criar Usuários**
-
-1. No painel admin, clique em "➕ Novo Usuário"
-2. Preencha os dados:
-   - Nome completo
-   - E-mail
-   - Empresa
-   - Senha
-   - Marque "Ativo"
-3. Clique em "Salvar"
-
-### 3️⃣ **Login como Usuário**
-
-1. Faça logout
-2. Login com o e-mail/senha do usuário criado
-3. Você será redirecionado para `/dashboard`
-
-### 4️⃣ **Fazer Upload de NF-e**
-
-1. No dashboard, vá para "Upload de NF-e"
-2. Arraste ou selecione um arquivo XML ou PDF
-3. Clique em "📤 Enviar Arquivo"
-4. Aguarde o processamento (alguns segundos)
-5. O arquivo aparecerá em "Arquivos Enviados" com status "✅ Processado"
-
-### 5️⃣ **Gerar Relatório MAPA**
-
-1. Role até "Gerar Relatório Trimestral MAPA"
-2. Selecione o trimestre desejado (ex: Q1-2025)
-3. Clique em "📊 Gerar Relatório MAPA"
-4. Aguarde o processamento
-5. O relatório aparecerá em "Relatórios Gerados"
-
-### 6️⃣ **Baixar Relatório**
-
-1. Na seção "Relatórios Gerados"
-2. Clique em "📥 Download"
-3. O arquivo Excel será baixado
-4. ✅ Relatório pronto para envio ao MAPA!
-
----
-
-## 📁 Estrutura do Projeto
-```
-mapa-saas/
-├── 📁 app/                          # Aplicação principal
-│   ├── 📄 __init__.py
-│   ├── 📄 main.py                   # Aplicação FastAPI
-│   ├── 📄 config.py                 # Configurações
-│   ├── 📄 database.py               # Conexão com banco
-│   ├── 📄 models.py                 # Modelos SQLAlchemy
-│   ├── 📄 schemas.py                # Schemas Pydantic
-│   ├── 📄 auth.py                   # Autenticação JWT
-│   │
-│   ├── 📁 routers/                  # Endpoints da API
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 admin.py              # Rotas do admin
-│   │   └── 📄 user.py               # Rotas do usuário
-│   │
-│   └── 📁 utils/                    # Utilitários
-│       ├── 📄 __init__.py
-│       ├── 📄 xml_processor.py      # Processador XML
-│       ├── 📄 pdf_processor.py      # Processador PDF
-│       └── 📄 report_generator.py   # Gerador de relatórios
-│
-├── 📁 static/                       # Arquivos estáticos
-│   ├── 📁 css/
-│   │   └── 📄 style.css             # Estilos
-│   └── 📁 js/
-│       ├── 📄 main.js               # JavaScript comum
-│       ├── 📄 admin.js              # JavaScript admin
-│       └── 📄 user.js               # JavaScript usuário
-│
-├── 📁 templates/                    # Templates HTML
-│   ├── 📄 base.html                 # Template base
-│   ├── 📄 login.html                # Página de login
-│   ├── 📄 admin_dashboard.html      # Dashboard admin
-│   └── 📄 user_dashboard.html       # Dashboard usuário
-│
-├── 📁 uploads/                      # Arquivos enviados (criado automaticamente)
-├── 📁 reports/                      # Relatórios gerados (criado automaticamente)
-│
-├── 📄 requirements.txt              # Dependências Python
-├── 📄 .env.example                  # Exemplo de variáveis de ambiente
-├── 📄 .gitignore                    # Arquivos ignorados pelo Git
-├── 📄 create_admin.py               # Script para criar admin
-└── 📄 README.md                     # Este arquivo
-```
-
----
-
-## 📚 Documentação da API
-
-### Acessar Documentação Interativa
-
-Com o servidor rodando, acesse:
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### Principais Endpoints
-
-#### Autenticação
-```http
-POST /api/admin/auth/login
-```
-Body:
-```json
-{
-  "email": "admin@example.com",
-  "password": "senha123"
-}
-```
-
-#### Admin - CRUD de Usuários
-```http
-POST   /api/admin/users          # Criar usuário
-GET    /api/admin/users          # Listar usuários
-GET    /api/admin/users/{id}     # Obter usuário
-PUT    /api/admin/users/{id}     # Atualizar usuário
-DELETE /api/admin/users/{id}     # Deletar usuário
-```
-
-#### Usuário - Upload e Relatórios
-```http
-POST   /api/user/upload-nfe                    # Upload NF-e
-GET    /api/user/uploads                       # Listar uploads
-POST   /api/user/generate-report/{period}      # Gerar relatório
-GET    /api/user/reports                       # Listar relatórios
-GET    /api/user/download-report/{id}          # Download relatório
-DELETE /api/user/uploads/{id}                  # Deletar upload
-DELETE /api/user/reports/{id}                  # Deletar relatório
-```
-
----
-
-## ☁️ Deploy no Azure
-
-### Requisitos Azure
-
-- Conta Azure ativa
-- Azure CLI instalado
-- Créditos disponíveis
-
-### Passo a Passo
-
-#### 1. **Criar Azure Database for PostgreSQL**
-```bash
-# Login
-az login
-
-# Criar grupo de recursos
-az group create --name mapa-saas-rg --location eastus
-
-# Criar servidor PostgreSQL
-az postgres flexible-server create \
+# Ver recursos do grupo
+az resource list \
   --resource-group mapa-saas-rg \
-  --name mapa-saas-db \
-  --location eastus \
-  --admin-user mapa_admin \
-  --admin-password "SenhaSegura@123" \
-  --sku-name Standard_B1ms \
-  --tier Burstable \
-  --version 14
-
-# Criar banco de dados
-az postgres flexible-server db create \
-  --resource-group mapa-saas-rg \
-  --server-name mapa-saas-db \
-  --database-name mapa_saas
-
-# Permitir conexões do Azure
-az postgres flexible-server firewall-rule create \
-  --resource-group mapa-saas-rg \
-  --name mapa-saas-db \
-  --rule-name AllowAllAzureIPs \
-  --start-ip-address 0.0.0.0 \
-  --end-ip-address 0.0.0.0
+  --query "[].{Name:name, Type:type, Location:location}" \
+  --output table
 ```
 
-#### 2. **Criar Azure Web App**
+### 🚨 2. Configurar Alertas de Orçamento
+
+**Criar alerta para $30/mês:**
 ```bash
-# Criar App Service Plan
-az appservice plan create \
+# Via Portal Azure:
+# 1. Cost Management > Budgets > Add
+# 2. Nome: "mapa-saas-monthly-budget"
+# 3. Valor: $30
+# 4. Período: Monthly
+# 5. Alertas: 80%, 100%
+# 6. E-mail: rhyan.hdr@gmail.com
+
+# Via CLI (requer extensão cost-management):
+az extension add --name costmanagement
+
+az consumption budget create \
+  --budget-name "mapa-saas-budget" \
+  --amount 30 \
+  --time-grain Monthly \
+  --start-date 2025-01-01 \
+  --end-date 2025-12-31 \
+  --resource-group mapa-saas-rg
+```
+
+### 🔧 3. Controle de Custos - Tabela de Ações
+
+| Ação | Comando | Impacto no Custo | Quando Usar |
+|------|---------|------------------|-------------|
+| **Parar Web App** | `az webapp stop --resource-group mapa-saas-rg --name mapa-saas-app-1762971490` | ⚠️ **Custo continua** | Manutenção rápida |
+| **Iniciar Web App** | `az webapp start --resource-group mapa-saas-rg --name mapa-saas-app-1762971490` | Sem impacto | Reativar após stop |
+| **Reiniciar Web App** | `az webapp restart --resource-group mapa-saas-rg --name mapa-saas-app-1762971490` | Sem impacto | Após mudanças |
+| **Parar PostgreSQL** | `az postgres flexible-server stop --resource-group mapa-saas-rg --name mapa-saas-db-1762971848` | ✅ **Economiza ~$12/mês** | Desenvolvimento |
+| **Iniciar PostgreSQL** | `az postgres flexible-server start --resource-group mapa-saas-rg --name mapa-saas-db-1762971848` | Retoma cobrança | Voltar ao uso |
+| **Scale Down (F1 Free)** | `az appservice plan update --resource-group mapa-saas-rg --name mapa-saas-plan --sku F1` | ✅ **Economiza ~$13/mês** | ⚠️ Limitações severas |
+| **Scale Up (S1 Standard)** | `az appservice plan update --resource-group mapa-saas-rg --name mapa-saas-plan --sku S1` | ❌ **~$70/mês** | Alta demanda |
+| **Deletar TUDO** | `az group delete --name mapa-saas-rg --yes --no-wait` | ✅ **Custo ZERO** | ⚠️ **IRREVERSÍVEL** |
+
+### 💡 4. Estratégias de Economia
+
+#### **Estratégia 1: Uso Intermitente (Desenvolvimento)**
+```bash
+# Parar PostgreSQL quando não estiver usando
+az postgres flexible-server stop \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848
+
+# Economia: ~$12/mês
+# Limitação: App ficará offline
+
+# Iniciar quando necessário
+az postgres flexible-server start \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848
+```
+
+#### **Estratégia 2: Migrar para Free Tier (Testes)**
+```bash
+# ATENÇÃO: Limitações do F1 Free:
+# - 60 minutos CPU/dia
+# - 1GB storage
+# - App "dorme" após inatividade
+# - Sem SSL customizado
+
+az appservice plan update \
+  --resource-group mapa-saas-rg \
   --name mapa-saas-plan \
-  --resource-group mapa-saas-rg \
-  --sku B1 \
-  --is-linux
+  --sku F1
 
-# Criar Web App
-az webapp create \
-  --resource-group mapa-saas-rg \
-  --plan mapa-saas-plan \
-  --name mapa-saas-app \
-  --runtime "PYTHON:3.9"
+# Economia: ~$13/mês
 ```
 
-#### 3. **Configurar Variáveis de Ambiente**
+#### **Estratégia 3: Agendar Ligado/Desligado (Azure Automation)**
+
+**Agendar via Portal:**
+1. Criar Azure Automation Account
+2. Criar Runbook PowerShell:
+```powershell
+# Start: Segunda-Sexta 8h
+Start-AzWebApp -ResourceGroupName "mapa-saas-rg" -Name "mapa-saas-app-1762971490"
+
+# Stop: Segunda-Sexta 18h
+Stop-AzWebApp -ResourceGroupName "mapa-saas-rg" -Name "mapa-saas-app-1762971490"
+```
+3. Agendar via Schedules
+
+**Economia estimada:** ~40-50% (~$10-12/mês)
+
+### 📈 5. Monitorar Custos Continuamente
 ```bash
-az webapp config appsettings set \
-  --resource-group mapa-saas-rg \
-  --name mapa-saas-app \
-  --settings \
-    DATABASE_URL="postgresql://mapa_admin:SenhaSegura@123@mapa-saas-db.postgres.database.azure.com:5432/mapa_saas?sslmode=require" \
-    SECRET_KEY="sua-chave-gerada" \
-    ALGORITHM="HS256" \
-    ACCESS_TOKEN_EXPIRE_MINUTES="30" \
-    DEBUG="False" \
-    ALLOWED_ORIGINS="https://mapa-saas-app.azurewebsites.net"
+# Script para verificar custos diariamente
+cat > check_costs.sh << 'EOF'
+#!/bin/bash
+echo "💰 Custos MAPA SaaS - $(date)"
+echo "================================"
+
+# Ver estado dos recursos
+echo "📊 Estado dos Recursos:"
+az webapp show --resource-group mapa-saas-rg --name mapa-saas-app-1762971490 --query state -o tsv
+az postgres flexible-server show --resource-group mapa-saas-rg --name mapa-saas-db-1762971848 --query state -o tsv
+
+# Ver plano atual
+echo "📋 App Service Plan:"
+az appservice plan show --resource-group mapa-saas-rg --name mapa-saas-plan --query sku -o table
+
+echo "✅ Verificação concluída"
+EOF
+
+chmod +x check_costs.sh
 ```
 
-#### 4. **Deploy**
-```bash
-# Comprimir projeto
-zip -r mapa-saas.zip . -x "venv/*" ".git/*" "__pycache__/*"
+---
 
-# Deploy
+## III. Manutenção e Atualização da Aplicação
+
+### 🔄 A. Deploy de Novo Código
+
+#### **Método 1: Deploy via ZIP (Recomendado)**
+
+**Passo a passo completo:**
+```bash
+# 1. Navegar até o diretório do projeto
+cd ~/Documentos/mapa-saas
+
+# 2. Garantir que está na versão mais recente
+git status
+git pull origin main  # Se usar Git
+
+# 3. Ativar ambiente virtual (se testar localmente)
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
+
+# 4. Testar localmente (opcional mas recomendado)
+python -m pytest  # Se tiver testes
+uvicorn app.main:app --reload  # Testar manualmente
+
+# 5. Criar ZIP otimizado
+zip -r mapa-saas-$(date +%Y%m%d-%H%M%S).zip . \
+  -x "venv/*" \
+  -x ".git/*" \
+  -x ".github/*" \
+  -x "__pycache__/*" \
+  -x "*.pyc" \
+  -x "*.pyo" \
+  -x ".env" \
+  -x ".env.*" \
+  -x "uploads/*" \
+  -x "reports/*" \
+  -x "logs/*" \
+  -x ".vscode/*" \
+  -x ".idea/*" \
+  -x "*.db" \
+  -x "*.sqlite*" \
+  -x "node_modules/*" \
+  -x ".DS_Store" \
+  -x "*.log"
+
+# 6. Fazer deploy
+echo "🚀 Iniciando deploy..."
 az webapp deployment source config-zip \
   --resource-group mapa-saas-rg \
-  --name mapa-saas-app \
-  --src mapa-saas.zip
+  --name mapa-saas-app-1762971490 \
+  --src mapa-saas-$(date +%Y%m%d)*.zip
+
+# 7. Monitorar deploy em tempo real
+echo "📊 Monitorando logs..."
+az webapp log tail \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490
+
+# 8. Aguardar alguns segundos e reiniciar (se necessário)
+sleep 30
+az webapp restart \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490
+
+# 9. Verificar se está funcionando
+echo "🔍 Testando aplicação..."
+curl -f https://mapa-saas-app-1762971490.azurewebsites.net/health && echo "✅ App OK" || echo "❌ App com problemas"
+
+# 10. Testar login
+curl -X POST https://mapa-saas-app-1762971490.azurewebsites.net/api/admin/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"rhyan.hdr@gmail.com","password":"SUA_SENHA"}' \
+  && echo "✅ Login OK" || echo "❌ Login falhou"
 ```
 
-#### 5. **Criar Admin (no Azure)**
+#### **Método 2: Deploy via Git**
 ```bash
-# SSH na instância
-az webapp ssh --resource-group mapa-saas-rg --name mapa-saas-app
+# Configurar remote do Azure (apenas primeira vez)
+git remote add azure https://mapa-saas-app-1762971490.scm.azurewebsites.net/mapa-saas-app-1762971490.git
 
-# Dentro do SSH
-cd /home/site/wwwroot
-python create_admin.py
+# Obter credenciais de deployment
+az webapp deployment list-publishing-credentials \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --query "{Username:publishingUserName, Password:publishingPassword}"
+
+# Deploy
+git add .
+git commit -m "feat: descrição das mudanças"
+git push azure main  # ou master
+
+# Monitorar
+az webapp log tail --resource-group mapa-saas-rg --name mapa-saas-app-1762971490
 ```
 
-### Acessar Aplicação
+#### **Método 3: Deploy via VS Code (Azure Extension)**
 
-https://mapa-saas-app.azurewebsites.net
+1. Instalar extensão: **Azure App Service**
+2. Login no Azure via extensão
+3. Clicar com botão direito no Web App
+4. Selecionar **"Deploy to Web App..."**
+5. Selecionar pasta do projeto
+6. Confirmar deploy
 
----
+### ⚙️ B. Gerenciar Variáveis de Ambiente
 
-## 🔧 Solução de Problemas
-
-### ❌ Erro: "ModuleNotFoundError"
-
-**Causa**: Dependências não instaladas
-
-**Solução**:
+#### **Ver Todas as Variáveis**
 ```bash
-# Ativar ambiente virtual
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+# Listar todas
+az webapp config appsettings list \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --output table
 
-# Reinstalar dependências
+# Ver apenas nomes
+az webapp config appsettings list \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --query "[].name" -o tsv
+
+# Ver valor de uma variável específica
+az webapp config appsettings list \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --query "[?name=='DEBUG'].value" -o tsv
+```
+
+#### **Atualizar Variáveis**
+```bash
+# Atualizar uma única variável
+az webapp config appsettings set \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --settings ACCESS_TOKEN_EXPIRE_MINUTES="60"
+
+# Atualizar múltiplas variáveis
+az webapp config appsettings set \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --settings \
+    DEBUG="False" \
+    ACCESS_TOKEN_EXPIRE_MINUTES="60" \
+    ALLOWED_ORIGINS="https://mapa-saas-app-1762971490.azurewebsites.net,https://www.seudominio.com"
+
+# Gerar e atualizar SECRET_KEY
+NEW_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+az webapp config appsettings set \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --settings SECRET_KEY="$NEW_SECRET"
+
+# SEMPRE reiniciar após alterar variáveis
+az webapp restart --resource-group mapa-saas-rg --name mapa-saas-app-1762971490
+```
+
+#### **Deletar Variáveis**
+```bash
+# Deletar uma variável
+az webapp config appsettings delete \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --setting-names "VARIAVEL_ANTIGA"
+
+# Deletar múltiplas
+az webapp config appsettings delete \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --setting-names "VAR1" "VAR2" "VAR3"
+```
+
+### 🔄 C. Atualizar Dependências Python
+```bash
+# Após modificar requirements.txt
+
+# 1. Testar localmente SEMPRE
 pip install -r requirements.txt
+
+# 2. Verificar se não há conflitos
+pip check
+
+# 3. Fazer deploy (Azure instalará automaticamente)
+zip -r mapa-saas.zip . -x "venv/*" ".git/*" "__pycache__/*" "*.pyc" ".env" "uploads/*" "reports/*"
+
+az webapp deployment source config-zip \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --src mapa-saas.zip
+
+# 4. Monitorar instalação nos logs
+az webapp log tail --resource-group mapa-saas-rg --name mapa-saas-app-1762971490 | grep -i "install\|requirement"
 ```
 
----
-
-### ❌ Erro: "could not connect to server"
-
-**Causa**: PostgreSQL não está rodando
-
-**Solução**:
-
-**Windows**: 
-```cmd
-# Abra Services.msc
-# Procure por "postgresql-x64-XX"
-# Clique com botão direito → Iniciar
-```
-
-**Linux**:
+### 🎯 D. Atualizar Startup Command
 ```bash
-sudo systemctl start postgresql
-sudo systemctl status postgresql
+# Ver comando atual
+az webapp config show \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --query appCommandLine -o tsv
+
+# Atualizar comando
+az webapp config set \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --startup-file "gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind=0.0.0.0:8000 --timeout 600 --access-logfile - --error-logfile -"
+
+# Reiniciar
+az webapp restart --resource-group mapa-saas-rg --name mapa-saas-app-1762971490
 ```
 
-**macOS**:
+### 📝 E. Rollback para Versão Anterior
 ```bash
-brew services start postgresql
+# Ver histórico de deployments
+az webapp deployment list \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --output table
+
+# Fazer rollback para deployment anterior
+PREVIOUS_ID=$(az webapp deployment list \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --query "[1].id" -o tsv)
+
+az webapp deployment source show \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --deployment-id $PREVIOUS_ID
 ```
 
 ---
 
-### ❌ Erro: "relation does not exist"
+## IV. Gerenciamento do Banco de Dados
 
-**Causa**: Tabelas não foram criadas
+### 🔌 A. Conexão Remota com Clientes SQL
 
-**Solução**:
-```python
-# Execute no Python interativo
-python
-
->>> from app.database import engine, Base
->>> from app.models import User, XMLUpload, Report
->>> Base.metadata.create_all(bind=engine)
->>> exit()
-```
-
----
-
-### ❌ Erro: "Invalid token" ou "401 Unauthorized"
-
-**Causa**: Token expirado ou inválido
-
-**Solução**:
-1. Abra o navegador (F12)
-2. Application → Local Storage
-3. Delete `access_token`
-4. Faça login novamente
-
----
-
-### ❌ Erro: "SECRET_KEY not found"
-
-**Causa**: Arquivo `.env` não configurado
-
-**Solução**:
+#### **1. Liberar Acesso via Firewall**
 ```bash
-# Certifique-se que o arquivo .env existe
-ls -la .env  # Linux/Mac
-dir .env     # Windows
+# Obter seu IP público
+MEU_IP=$(curl -s ifconfig.me)
+echo "Seu IP público: $MEU_IP"
 
-# Copie do exemplo
-cp .env.example .env  # Linux/Mac
-copy .env.example .env  # Windows
+# Adicionar regra de firewall
+az postgres flexible-server firewall-rule create \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848 \
+  --rule-name "MeuPC-$(date +%Y%m%d)" \
+  --start-ip-address $MEU_IP \
+  --end-ip-address $MEU_IP
 
-# Edite e configure
+# Listar regras existentes
+az postgres flexible-server firewall-rule list \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848 \
+  --output table
+
+# Deletar regra antiga
+az postgres flexible-server firewall-rule delete \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848 \
+  --rule-name "MeuPC-20250101" \
+  --yes
 ```
 
----
+#### **2. Conectar com pgAdmin 4**
 
-### ❌ Upload de arquivo falha
+**Download:** https://www.pgadmin.org/download/
 
-**Causa**: Permissões de diretório
+**Configuração:**
+1. Abra pgAdmin 4
+2. Clique com botão direito em **Servers** → **Register** → **Server**
+3. Aba **General:**
+   - Name: `MAPA SaaS - Azure`
+4. Aba **Connection:**
+   - Host name: `mapa-saas-db-1762971848.postgres.database.azure.com`
+   - Port: `5432`
+   - Maintenance database: `mapa_saas`
+   - Username: `mapaadmin`
+   - Password: `NovaSenha12345!`
+   - Save password: ✅
+5. Aba **SSL:**
+   - SSL mode: `Require`
+6. **Save** e conectar
 
-**Solução**:
+#### **3. Conectar com DBeaver**
+
+**Download:** https://dbeaver.io/download/
+
+**Configuração:**
+1. **Database** → **New Database Connection**
+2. Selecione **PostgreSQL**
+3. **Main:**
+   - Server Host: `mapa-saas-db-1762971848.postgres.database.azure.com`
+   - Port: `5432`
+   - Database: `mapa_saas`
+   - Username: `mapaadmin`
+   - Password: `NovaSenha12345!`
+   - ✅ Save password
+4. **SSL:**
+   - ✅ Use SSL
+   - SSL Mode: `require`
+5. **Test Connection** → **Finish**
+
+#### **4. Conectar via psql (Terminal)**
 ```bash
-# Linux/Mac
-chmod 777 uploads
-chmod 777 reports
+# Instalar psql (se não tiver)
+# Ubuntu/Debian:
+sudo apt install postgresql-client
 
-# Windows (execute como Admin)
-icacls uploads /grant Everyone:F
-icacls reports /grant Everyone:F
+# macOS:
+brew install postgresql@14
+
+# Windows: Baixar PostgreSQL
+# https://www.postgresql.org/download/windows/
+
+# Conectar
+psql "postgresql://mapaadmin:NovaSenha12345!@mapa-saas-db-1762971848.postgres.database.azure.com:5432/mapa_saas?sslmode=require"
+
+# OU com parâmetros separados
+psql -h mapa-saas-db-1762971848.postgres.database.azure.com \
+     -U mapaadmin \
+     -d mapa_saas \
+     -p 5432
+
+# Comandos úteis no psql:
+\l                    # Listar databases
+\dt                   # Listar tabelas
+\d users              # Descrever tabela users
+\d+ users             # Descrição detalhada
+SELECT * FROM users;  # Query
+\x                    # Toggle expanded display
+\q                    # Sair
 ```
 
----
-
-### ❌ PDF não é processado corretamente
-
-**Causa**: Layout do PDF diferente do esperado
-
-**Solução**:
-1. Prefira usar arquivos XML quando possível
-2. O PDF deve ser uma DANFE oficial
-3. Verifique se o PDF tem texto (não é imagem)
-4. Se necessário, ajuste o `pdf_processor.py`
-
----
-
-## ❓ Perguntas Frequentes
-
-### **1. Posso usar MySQL ao invés de PostgreSQL?**
-
-Sim! Basta alterar no `.env`:
-```env
-DATABASE_URL=mysql+pymysql://user:password@localhost/mapa_saas
-```
-
-E instalar o driver:
+### 🔐 B. Resetar Senha do PostgreSQL
 ```bash
-pip install pymysql
+# 1. Definir nova senha forte (evite @, #, $ ou use aspas)
+NOVA_SENHA="MinhaSenhaSegura2025!"
+
+# 2. Atualizar senha no servidor (pode demorar 2-5 minutos)
+echo "🔄 Atualizando senha do PostgreSQL..."
+az postgres flexible-server update \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848 \
+  --admin-password "$NOVA_SENHA"
+
+# 3. Aguardar conclusão
+echo "⏳ Aguardando conclusão..."
+sleep 60
+
+# 4. Atualizar DATABASE_URL no Web App (CRÍTICO!)
+DB_HOST="mapa-saas-db-1762971848.postgres.database.azure.com"
+DATABASE_URL_NOVA="postgresql://mapaadmin:${NOVA_SENHA}@${DB_HOST}:5432/mapa_saas?sslmode=require"
+
+echo "🔄 Atualizando DATABASE_URL no Web App..."
+az webapp config appsettings set \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-app-1762971490 \
+  --settings DATABASE_URL="$DATABASE_URL_NOVA"
+
+# 5. Reiniciar aplicação
+echo "🔄 Reiniciando aplicação..."
+az webapp restart --resource-group mapa-saas-rg --name mapa-saas-app-1762971490
+
+# 6. Aguardar e testar
+sleep 30
+echo "🔍 Testando conexão..."
+curl -f https://mapa-saas-app-1762971490.azurewebsites.net/health && echo "✅ Sucesso!" || echo "❌ Falhou! Verificar logs."
+
+echo "✅ Senha atualizada com sucesso!"
+echo "📝 Nova senha: $NOVA_SENHA"
+echo "⚠️  Anote em local seguro!"
 ```
 
----
+### 📊 C. Operações no Banco de Dados
 
-### **2. Como fazer backup do banco de dados?**
+#### **Ver Estatísticas e Configurações**
 ```bash
-# Backup
-pg_dump -U postgres mapa_saas > backup.sql
+# Ver detalhes do servidor
+az postgres flexible-server show \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848
 
-# Restore
-psql -U postgres mapa_saas < backup.sql
-```
+# Ver uso de storage
+az postgres flexible-server show \
+  --resource-group mapa-saas-rg \
+  --name mapa-saas-db-1762971848 \
+  --query storage -o table
 
----
-
-### **3. Posso processar múltiplos arquivos de uma vez?**
-
-Atualmente não, mas você pode enviar vários arquivos sequencialmente. Uma feature de upload em lote está planejada.
-
----
-
-### **4. O sistema funciona offline?**
-
-Sim! Uma vez instalado, funciona completamente offline.
-
----
-
-### **5. Posso personalizar o formato do relatório?**
-
-Sim! Edite o arquivo `app/utils/report_generator.py` para ajustar colunas, formatação, etc.
-
----
-
-### **6. Qual o limite de tamanho dos arquivos?**
-
-Por padrão, 50MB. Para alterar, modifique em `app/main.py`:
-```python
-app.add_middleware(
-    TrustedHostMiddleware,
-    max_upload_size=100_000_000  # 100MB
-)
-```
-
----
-
-### **7. Como adicionar mais campos ao relatório?**
-
-Edite `app/utils/report_generator.py` e adicione os campos desejados no método `_parse_products_for_mapa()`.
-
----
-
-### **8. Posso usar em produção?**
-
-Sim, mas recomendamos:
-- Usar HTTPS
-- Configurar firewall
-- Fazer backups regulares
-- Monitorar logs
-- Usar `DEBUG=False`
-
----
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Para contribuir:
-
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/MinhaFeature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
-4. Push para a branch (`git push origin feature/MinhaFeature`)
-5. Abra um Pull Request
-
----
-
-## 📞 Suporte
-
-### Encontrou um bug?
-Abra uma [issue no GitHub](link) com:
-- Descrição do problema
-- Passos para reproduzir
-- Logs de erro
-- Sistema operacional
-
-### Dúvidas?
-- 📧 Email: suporte@exemplo.com
-- 💬 Discord: [Link do servidor]
-- 📖 Wiki: [Link da wiki]
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
-## 🎉 Agradecimentos
-
-- FastAPI pela excelente framework
-- Comunidade Python
-- MAPA pelas especificações dos relatórios
-
----
-
-## 📊 Status do Projeto
-
-![Status](https://img.shields.io/badge/Status-Em%20Produ%C3%A7%C3%A3o-success)
-![Versão](https://img.shields.io/badge/Vers%C3%A3o-1.0.0-blue)
-![Cobertura](https://img.shields.io/badge/Cobertura-85%25-green)
-
----
-
-<div align="center">
-
-**Desenvolvido com ❤️ para facilitar o trabalho das empresas de fertilizantes**
-
-[⬆ Voltar ao topo](#-mapa-saas---automação-de-relatórios-trimestrais)
-
-</div>
+# Ver lista
