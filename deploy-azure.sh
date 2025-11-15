@@ -27,36 +27,21 @@ find . -type f -name "*.pyc" -delete 2>/dev/null || true
 find . -type f -name "*.pyo" -delete 2>/dev/null || true
 rm -f deploy.zip 2>/dev/null || true
 
-echo -e "${YELLOW}Step 2/5:${NC} Creating deployment package..."
-# Create ZIP excluding unnecessary files
-zip -r $ZIP_FILE . \
-  -x "*.git/*" \
-  -x "*venv/*" \
-  -x "*ENV/*" \
-  -x "*.env" \
-  -x "*.env.local" \
-  -x "*uploads/*" \
-  -x "*reports/*" \
-  -x "*logs/*" \
-  -x "*.db" \
-  -x "*.sqlite" \
-  -x "*.log" \
-  -x "*__pycache__/*" \
-  -x "*.pyc" \
-  -x "*.pyo" \
-  -x "*.DS_Store" \
-  -x "*.vscode/*" \
-  -x "*.idea/*" \
-  -x "*node_modules/*" \
-  -x "*.pytest_cache/*" \
-  -x "*htmlcov/*" \
-  -x "*.coverage" \
-  -x "deploy.zip" \
-  -x "mapa-saas-latest.zip" \
-  -x "server.log" \
-  > /dev/null
+echo -e "${YELLOW}Step 2/5:${NC} Creating deployment package (using explicit file list)..."
+
+# Use the create-deployment-zip script for better control
+bash create-deployment-zip.sh > /tmp/zip-creation.log 2>&1
+
+if [ ! -f "$ZIP_FILE" ]; then
+    echo -e "${RED}✗${NC} Failed to create ZIP"
+    cat /tmp/zip-creation.log
+    exit 1
+fi
 
 echo -e "${GREEN}✓${NC} Package created: $(du -h $ZIP_FILE | cut -f1)"
+echo ""
+echo "📋 Verifying critical files in ZIP:"
+unzip -l $ZIP_FILE | grep -E "(requirements.txt|startup-azure|app/main.py)" | sed 's/^/  /'
 
 echo -e "${YELLOW}Step 3/5:${NC} Configuring Azure App Service..."
 
@@ -67,11 +52,11 @@ az webapp config set \
   --linux-fx-version "PYTHON|3.11" \
   > /dev/null
 
-# Set startup command to use our custom script (simple = faster startup)
+# Set startup command to use our custom script (ultra simple = fastest)
 az webapp config set \
   --resource-group $RESOURCE_GROUP \
   --name $WEB_APP \
-  --startup-file "startup-azure-simple.sh" \
+  --startup-file "startup-azure-ultra-simple.sh" \
   > /dev/null
 
 # Disable Oryx build (we'll install dependencies at runtime)
