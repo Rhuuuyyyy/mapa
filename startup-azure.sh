@@ -12,15 +12,22 @@ set -e
 export PORT="${PORT:-8000}"
 
 # Install dependencies if not present
-if [ ! -d "venv" ]; then
-    echo "📦 Installing dependencies..."
+if [ ! -d "antenv" ]; then
+    echo "📦 Creating virtual environment..."
     python -m venv antenv
-    source antenv/bin/activate
+fi
+
+echo "📦 Activating virtual environment..."
+source antenv/bin/activate
+
+if [ ! -f "antenv/.installed" ]; then
+    echo "📦 Installing dependencies..."
     pip install --upgrade pip
     pip install -r requirements.txt
-    pip install gunicorn
+    touch antenv/.installed
+    echo "✅ Dependencies installed"
 else
-    source antenv/bin/activate
+    echo "✅ Dependencies already installed"
 fi
 
 # Create directories
