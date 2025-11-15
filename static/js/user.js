@@ -3,10 +3,11 @@ if (!checkAuth()) {
     window.location.href = '/';
 }
 
-// Load user info, catalog, and uploads on page load
+// Load user info, companies, products, and uploads on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadUserInfo();
-    await loadCatalog();
+    await loadCompanies();
+    await loadProducts();
     await loadUploads();
     setupUploadDragDrop();
 });
@@ -28,7 +29,438 @@ async function loadUserInfo() {
 }
 
 // ============================================================================
-// CATALOG MANAGEMENT FUNCTIONS
+// COMPANY MANAGEMENT FUNCTIONS
+// ============================================================================
+
+let companiesCache = []; // Global cache for companies
+
+async function loadCompanies() {
+    const tbody = document.getElementById('companiesTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="3" class="loading"><div class="spinner"></div> Carregando empresas...</td></tr>';
+
+    try {
+        const response = await fetchAPI('/api/user/companies');
+        if (!response || !response.ok) {
+            throw new Error('Failed to load companies');
+        }
+
+        companiesCache = await response.json();
+
+        if (companiesCache.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="no-data">Nenhuma empresa cadastrada. Clique em "Adicionar Empresa" para começar.</td></tr>';
+            updateCompanyFilter([]);
+            return;
+        }
+
+        // Populate table
+        tbody.innerHTML = companiesCache.map(company => `
+            <tr>
+                <td>${escapeHtml(company.company_name)}</td>
+                <td><span class="badge badge-primary">${escapeHtml(company.mapa_registration)}</span></td>
+                <td>
+                    <button onclick="editCompany(${company.id})" class="btn-small btn-primary" title="Editar">✏️</button>
+                    <button onclick="deleteCompany(${company.id})" class="btn-small btn-danger" title="Deletar">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+
+        // Update company filter dropdown
+        updateCompanyFilter(companiesCache);
+
+    } catch (error) {
+        console.error('Error loading companies:', error);
+        tbody.innerHTML = '<tr><td colspan="3" class="error">Erro ao carregar empresas</td></tr>';
+        Toast.error('Erro ao carregar empresas');
+    }
+}
+
+function updateCompanyFilter(companies) {
+    const select = document.getElementById('companyFilter');
+    if (!select) return;
+
+    // Keep "All Companies" option and add companies
+    select.innerHTML = '<option value="">Todas as Empresas</option>' +
+        companies.map(c => `<option value="${c.id}">${escapeHtml(c.company_name)}</option>`).join('');
+}
+
+async function showAddCompanyModal() {
+    const formHtml = `
+        <div class="form-group">
+            <label for="companyName">Nome da Empresa (exato do XML <em>&lt;emit&gt;&lt;xNome&gt;</em>)*</label>
+            <input type="text" id="companyName" required placeholder="Ex: EMPRESA ABC LTDA">
+            <small>Deve ser exatamente como aparece no XML</small>
+        </div>
+        <div class="form-group">
+            <label for="companyMapaReg">Registro MAPA Parcial da Empresa*</label>
+            <input type="text" id="companyMapaReg" required placeholder="Ex: PR-12345">
+            <small>Apenas a parte da empresa (sem o produto)</small>
+        </div>
+    `;
+
+    const confirmed = await showFormModal({
+        title: 'Adicionar Empresa',
+        content: formHtml,
+        confirmText: 'Adicionar',
+        cancelText: 'Cancelar'
+    });
+
+    if (confirmed) {
+        const companyName = document.getElementById('companyName').value.trim();
+        const companyMapaReg = document.getElementById('companyMapaReg').value.trim();
+
+        if (!companyName || !companyMapaReg) {
+            Toast.error('Preencha todos os campos obrigatórios');
+            return;
+        }
+
+        await createCompany(companyName, companyMapaReg);
+    }
+}
+
+async function createCompany(companyName, mapaRegistration) {
+    try {
+        const response = await fetchAPI('/api/user/companies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                company_name: companyName,
+                mapa_registration: mapaRegistration
+            })
+        });
+
+        if (!response || !response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Erro ao criar empresa');
+        }
+
+        Toast.success('Empresa adicionada com sucesso!');
+        await loadCompanies();
+        await loadProducts(); // Refresh products as well
+
+    } catch (error) {
+        console.error('Error creating company:', error);
+        Toast.error(error.message || 'Erro ao adicionar empresa');
+    }
+}
+
+async function editCompany(companyId) {
+    const company = companiesCache.find(c => c.id === companyId);
+    if (!company) {
+        Toast.error('Empresa não encontrada');
+        return;
+    }
+
+    const formHtml = `
+        <div class="form-group">
+            <label for="companyName">Nome da Empresa*</label>
+            <input type="text" id="companyName" value="${escapeHtml(company.company_name)}" required>
+        </div>
+        <div class="form-group">
+            <label for="companyMapaReg">Registro MAPA Parcial*</label>
+            <input type="text" id="companyMapaReg" value="${escapeHtml(company.mapa_registration)}" required>
+        </div>
+    `;
+
+    const confirmed = await showFormModal({
+        title: 'Editar Empresa',
+        content: formHtml,
+        confirmText: 'Salvar',
+        cancelText: 'Cancelar'
+    });
+
+    if (confirmed) {
+        const companyName = document.getElementById('companyName').value.trim();
+        const companyMapaReg = document.getElementById('companyMapaReg').value.trim();
+
+        try {
+            const response = await fetchAPI(`/api/user/companies/${companyId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_name: companyName,
+                    mapa_registration: companyMapaReg
+                })
+            });
+
+            if (!response || !response.ok) {
+                throw new Error('Erro ao atualizar empresa');
+            }
+
+            Toast.success('Empresa atualizada com sucesso!');
+            await loadCompanies();
+            await loadProducts();
+
+        } catch (error) {
+            console.error('Error updating company:', error);
+            Toast.error('Erro ao atualizar empresa');
+        }
+    }
+}
+
+async function deleteCompany(companyId) {
+    const company = companiesCache.find(c => c.id === companyId);
+    if (!company) return;
+
+    const confirmed = await showConfirmModal(
+        'Deletar Empresa',
+        `Tem certeza que deseja deletar a empresa "${company.company_name}"? Todos os produtos vinculados também serão deletados.`
+    );
+
+    if (confirmed) {
+        try {
+            const response = await fetchAPI(`/api/user/companies/${companyId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response || !response.ok) {
+                throw new Error('Erro ao deletar empresa');
+            }
+
+            Toast.success('Empresa deletada com sucesso!');
+            await loadCompanies();
+            await loadProducts();
+
+        } catch (error) {
+            console.error('Error deleting company:', error);
+            Toast.error('Erro ao deletar empresa');
+        }
+    }
+}
+
+// ============================================================================
+// PRODUCT MANAGEMENT FUNCTIONS
+// ============================================================================
+
+async function loadProducts() {
+    const tbody = document.getElementById('productsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="5" class="loading"><div class="spinner"></div> Carregando produtos...</td></tr>';
+
+    try {
+        const filter = document.getElementById('companyFilter');
+        const companyId = filter ? filter.value : '';
+        const url = companyId ? `/api/user/products?company_id=${companyId}` : '/api/user/products';
+
+        const response = await fetchAPI(url);
+        if (!response || !response.ok) {
+            throw new Error('Failed to load products');
+        }
+
+        const products = await response.json();
+
+        if (products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="no-data">Nenhum produto cadastrado. Clique em "Adicionar Produto" para começar.</td></tr>';
+            return;
+        }
+
+        // Populate table (we need to get company name from cache)
+        tbody.innerHTML = products.map(product => {
+            const company = companiesCache.find(c => c.id === product.company_id);
+            const companyName = company ? company.company_name : 'N/A';
+            const fullMapaReg = company ? `${company.mapa_registration}-${product.mapa_registration}` : product.mapa_registration;
+
+            return `
+                <tr>
+                    <td>${escapeHtml(companyName)}</td>
+                    <td>${escapeHtml(product.product_name)}</td>
+                    <td><span class="badge badge-info">${escapeHtml(product.mapa_registration)}</span><br><small title="Registro completo">${escapeHtml(fullMapaReg)}</small></td>
+                    <td>${product.product_reference ? escapeHtml(product.product_reference) : '-'}</td>
+                    <td>
+                        <button onclick="editProduct(${product.id})" class="btn-small btn-primary" title="Editar">✏️</button>
+                        <button onclick="deleteProduct(${product.id})" class="btn-small btn-danger" title="Deletar">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading products:', error);
+        tbody.innerHTML = '<tr><td colspan="5" class="error">Erro ao carregar produtos</td></tr>';
+        Toast.error('Erro ao carregar produtos');
+    }
+}
+
+async function showAddProductModal() {
+    if (companiesCache.length === 0) {
+        Toast.error('Primeiro cadastre uma empresa antes de adicionar produtos');
+        return;
+    }
+
+    const formHtml = `
+        <div class="form-group">
+            <label for="productCompanyId">Empresa*</label>
+            <select id="productCompanyId" required>
+                <option value="">Selecione uma empresa</option>
+                ${companiesCache.map(c => `<option value="${c.id}">${escapeHtml(c.company_name)} (${escapeHtml(c.mapa_registration)})</option>`).join('')}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="productName">Nome do Produto (exato do XML <em>&lt;prod&gt;&lt;xProd&gt;</em>)*</label>
+            <input type="text" id="productName" required placeholder="Ex: UREIA GRANULADA GRANEL">
+            <small>Deve ser exatamente como aparece no XML</small>
+        </div>
+        <div class="form-group">
+            <label for="productMapaReg">Registro MAPA Parcial do Produto*</label>
+            <input type="text" id="productMapaReg" required placeholder="Ex: 6.000001">
+            <small>Apenas a parte do produto (será combinado com o registro da empresa)</small>
+        </div>
+        <div class="form-group">
+            <label for="productReference">Referência/Nota (opcional)</label>
+            <input type="text" id="productReference" placeholder="Ex: Descrição amigável do produto">
+        </div>
+    `;
+
+    const confirmed = await showFormModal({
+        title: 'Adicionar Produto',
+        content: formHtml,
+        confirmText: 'Adicionar',
+        cancelText: 'Cancelar'
+    });
+
+    if (confirmed) {
+        const companyId = document.getElementById('productCompanyId').value;
+        const productName = document.getElementById('productName').value.trim();
+        const productMapaReg = document.getElementById('productMapaReg').value.trim();
+        const productReference = document.getElementById('productReference').value.trim();
+
+        if (!companyId || !productName || !productMapaReg) {
+            Toast.error('Preencha todos os campos obrigatórios');
+            return;
+        }
+
+        await createProduct(parseInt(companyId), productName, productMapaReg, productReference);
+    }
+}
+
+async function createProduct(companyId, productName, mapaRegistration, productReference) {
+    try {
+        const response = await fetchAPI('/api/user/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                company_id: companyId,
+                product_name: productName,
+                mapa_registration: mapaRegistration,
+                product_reference: productReference || null
+            })
+        });
+
+        if (!response || !response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Erro ao criar produto');
+        }
+
+        Toast.success('Produto adicionado com sucesso!');
+        await loadProducts();
+
+    } catch (error) {
+        console.error('Error creating product:', error);
+        Toast.error(error.message || 'Erro ao adicionar produto');
+    }
+}
+
+async function editProduct(productId) {
+    // Fetch product details
+    try {
+        const response = await fetchAPI(`/api/user/products`);
+        const products = await response.json();
+        const product = products.find(p => p.id === productId);
+
+        if (!product) {
+            Toast.error('Produto não encontrado');
+            return;
+        }
+
+        const formHtml = `
+            <div class="form-group">
+                <label for="productCompanyId">Empresa*</label>
+                <select id="productCompanyId" required>
+                    ${companiesCache.map(c => `<option value="${c.id}" ${c.id === product.company_id ? 'selected' : ''}>${escapeHtml(c.company_name)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="productName">Nome do Produto*</label>
+                <input type="text" id="productName" value="${escapeHtml(product.product_name)}" required>
+            </div>
+            <div class="form-group">
+                <label for="productMapaReg">Registro MAPA Parcial*</label>
+                <input type="text" id="productMapaReg" value="${escapeHtml(product.mapa_registration)}" required>
+            </div>
+            <div class="form-group">
+                <label for="productReference">Referência/Nota</label>
+                <input type="text" id="productReference" value="${product.product_reference ? escapeHtml(product.product_reference) : ''}">
+            </div>
+        `;
+
+        const confirmed = await showFormModal({
+            title: 'Editar Produto',
+            content: formHtml,
+            confirmText: 'Salvar',
+            cancelText: 'Cancelar'
+        });
+
+        if (confirmed) {
+            const companyId = document.getElementById('productCompanyId').value;
+            const productName = document.getElementById('productName').value.trim();
+            const productMapaReg = document.getElementById('productMapaReg').value.trim();
+            const productReference = document.getElementById('productReference').value.trim();
+
+            const updateResponse = await fetchAPI(`/api/user/products/${productId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_id: parseInt(companyId),
+                    product_name: productName,
+                    mapa_registration: productMapaReg,
+                    product_reference: productReference || null
+                })
+            });
+
+            if (!updateResponse || !updateResponse.ok) {
+                throw new Error('Erro ao atualizar produto');
+            }
+
+            Toast.success('Produto atualizado com sucesso!');
+            await loadProducts();
+        }
+
+    } catch (error) {
+        console.error('Error editing product:', error);
+        Toast.error('Erro ao editar produto');
+    }
+}
+
+async function deleteProduct(productId) {
+    const confirmed = await showConfirmModal(
+        'Deletar Produto',
+        'Tem certeza que deseja deletar este produto?'
+    );
+
+    if (confirmed) {
+        try {
+            const response = await fetchAPI(`/api/user/products/${productId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response || !response.ok) {
+                throw new Error('Erro ao deletar produto');
+            }
+
+            Toast.success('Produto deletado com sucesso!');
+            await loadProducts();
+
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            Toast.error('Erro ao deletar produto');
+        }
+    }
+}
+
+// ============================================================================
+// CATALOG MANAGEMENT FUNCTIONS (DEPRECATED - kept for compatibility)
 // ============================================================================
 
 async function loadCatalog() {
@@ -511,10 +943,10 @@ document.getElementById('generateReportForm').addEventListener('submit', async (
         } else {
             const error = await response.json();
 
-            // Check if it's an unregistered products error
-            if (error.detail && error.detail.unregistered_products) {
-                displayUnregisteredProducts(error.detail.unregistered_products);
-                Toast.error('Existem produtos não cadastrados no catálogo. Veja a lista abaixo.', 8000);
+            // Check if it's an unregistered entries error (companies/products)
+            if (error.detail && error.detail.unregistered_entries) {
+                displayUnregisteredEntries(error.detail.unregistered_entries, error.detail.error);
+                Toast.error('Existem empresas/produtos não cadastrados. Veja a lista abaixo.', 8000);
             } else {
                 Toast.error(error.detail || 'Erro ao processar arquivos');
             }
@@ -555,21 +987,34 @@ function displayReportResults(result, period) {
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function displayUnregisteredProducts(unregisteredProducts) {
-    // Show unregistered products section
-    const errorSection = document.getElementById('unregisteredProductsSection');
+function displayUnregisteredEntries(unregisteredEntries, errorMessage) {
+    // Show unregistered entries section
+    const errorSection = document.getElementById('unregisteredEntriesSection');
     errorSection.style.display = 'block';
 
+    // Update error message
+    const messageEl = document.getElementById('unregisteredErrorMessage');
+    if (messageEl && errorMessage) {
+        messageEl.textContent = errorMessage;
+    }
+
     // Populate table
-    const tbody = document.getElementById('unregisteredProductsTableBody');
-    tbody.innerHTML = unregisteredProducts.map(product => `
-        <tr>
-            <td><strong>${escapeHtml(product.product_name)}</strong></td>
-            <td>${escapeHtml(product.nfe_number)}</td>
-            <td style="text-align: right;">${formatNumber(product.quantity)}</td>
-            <td>${escapeHtml(product.unit)}</td>
-        </tr>
-    `).join('');
+    const tbody = document.getElementById('unregisteredEntriesTableBody');
+    tbody.innerHTML = unregisteredEntries.map(entry => {
+        const errorTypeBadge = entry.error_type === 'company'
+            ? '<span class="badge badge-danger">Empresa</span>'
+            : '<span class="badge badge-warning">Produto</span>';
+
+        return `
+            <tr>
+                <td>${errorTypeBadge}</td>
+                <td><strong>${escapeHtml(entry.company_name)}</strong></td>
+                <td>${entry.product_name ? escapeHtml(entry.product_name) : '<em>-</em>'}</td>
+                <td>${escapeHtml(entry.nfe_number)}</td>
+                <td style="text-align: right;">${formatNumber(entry.quantity)} ${escapeHtml(entry.unit)}</td>
+            </tr>
+        `;
+    }).join('');
 
     // Scroll to error section
     errorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -13,15 +13,55 @@
     </header>
     
     <div class="dashboard-content">
-        <!-- Raw Material Catalog Section -->
-        <div class="catalog-section">
+        <!-- Companies Section -->
+        <div class="companies-section">
             <div class="section-header">
                 <div class="section-title">
-                    <span class="section-icon">📚</span>
-                    <h2>Catálogo Mestre de Matérias-Primas</h2>
+                    <span class="section-icon">🏢</span>
+                    <h2>Cadastro de Empresas</h2>
                 </div>
                 <div>
-                    <button onclick="showAddCatalogModal()" class="btn btn-success">
+                    <button onclick="showAddCompanyModal()" class="btn btn-success">
+                        <span>➕</span> Adicionar Empresa
+                    </button>
+                </div>
+            </div>
+
+            <div class="alert alert-info" style="margin-bottom: 20px;">
+                <span class="alert-icon">ℹ️</span>
+                <div class="alert-content">
+                    <h4>Como funciona</h4>
+                    <p>Cadastre as empresas (exatamente como aparecem no XML em <strong>&lt;emit&gt;&lt;xNome&gt;</strong>) com seu registro MAPA parcial (ex: <strong>PR-12345</strong>).</p>
+                </div>
+            </div>
+
+            <table id="companiesTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">Nome da Empresa (XML)</th>
+                        <th style="width: 30%;">Registro MAPA Parcial</th>
+                        <th style="width: 20%;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="companiesTableBody">
+                    <tr>
+                        <td colspan="3" class="loading">
+                            <div class="spinner"></div> Carregando empresas...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Products Section -->
+        <div class="products-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">📦</span>
+                    <h2>Cadastro de Produtos</h2>
+                </div>
+                <div>
+                    <button onclick="showAddProductModal()" class="btn btn-success">
                         <span>➕</span> Adicionar Produto
                     </button>
                 </div>
@@ -30,24 +70,32 @@
             <div class="alert alert-info" style="margin-bottom: 20px;">
                 <span class="alert-icon">ℹ️</span>
                 <div class="alert-content">
-                    <h4>Como funciona o Catálogo</h4>
-                    <p>Mapeie os nomes dos produtos (exatamente como aparecem no XML) para seus números de registro MAPA. Isso garante processamento confiável sem erros de extração automática.</p>
+                    <h4>Como funciona</h4>
+                    <p>Cadastre os produtos (exatamente como aparecem no XML em <strong>&lt;prod&gt;&lt;xProd&gt;</strong>) vinculados a uma empresa, com registro MAPA parcial (ex: <strong>6.000001</strong>). O registro completo será: <strong>Empresa-Produto</strong></p>
                 </div>
             </div>
 
-            <table id="catalogTable">
+            <div style="margin-bottom: 15px;">
+                <label for="companyFilter">Filtrar por Empresa:</label>
+                <select id="companyFilter" onchange="loadProducts()" style="padding: 8px; margin-left: 10px; min-width: 250px;">
+                    <option value="">Todas as Empresas</option>
+                </select>
+            </div>
+
+            <table id="productsTable">
                 <thead>
                     <tr>
-                        <th style="width: 40%;">Nome do Produto (XML)</th>
-                        <th style="width: 25%;">Registro MAPA</th>
-                        <th style="width: 25%;">Referência</th>
+                        <th style="width: 25%;">Empresa</th>
+                        <th style="width: 30%;">Nome do Produto (XML)</th>
+                        <th style="width: 20%;">Registro MAPA Parcial</th>
+                        <th style="width: 15%;">Referência</th>
                         <th style="width: 10%;">Ações</th>
                     </tr>
                 </thead>
-                <tbody id="catalogTableBody">
+                <tbody id="productsTableBody">
                     <tr>
-                        <td colspan="4" class="loading">
-                            <div class="spinner"></div> Carregando catálogo...
+                        <td colspan="5" class="loading">
+                            <div class="spinner"></div> Carregando produtos...
                         </td>
                     </tr>
                 </tbody>
@@ -227,32 +275,36 @@
                 </table>
             </div>
 
-            <!-- Unregistered Products Error Section -->
-            <div id="unregisteredProductsSection" style="display: none; margin-top: 30px;">
+            <!-- Unregistered Entries Error Section -->
+            <div id="unregisteredEntriesSection" style="display: none; margin-top: 30px;">
                 <div class="alert alert-danger">
                     <span class="alert-icon">⚠️</span>
                     <div class="alert-content">
-                        <h4>Produtos Não Cadastrados no Catálogo</h4>
-                        <p>Os seguintes produtos foram encontrados nos XMLs mas não estão cadastrados no seu Catálogo de Matérias-Primas. Por favor, adicione-os ao catálogo e processe novamente.</p>
+                        <h4>Empresas/Produtos Não Cadastrados</h4>
+                        <p id="unregisteredErrorMessage">As seguintes empresas/produtos foram encontrados nos XMLs mas não estão cadastrados. Por favor, cadastre-os e processe novamente.</p>
                     </div>
                 </div>
 
-                <table id="unregisteredProductsTable" style="margin-top: 20px;">
+                <table id="unregisteredEntriesTable" style="margin-top: 20px;">
                     <thead>
                         <tr>
-                            <th style="width: 50%;">Nome do Produto (XML)</th>
-                            <th style="width: 20%;">NF-e</th>
-                            <th style="width: 15%;">Quantidade</th>
-                            <th style="width: 15%;">Unidade</th>
+                            <th style="width: 15%;">Tipo de Erro</th>
+                            <th style="width: 30%;">Empresa</th>
+                            <th style="width: 30%;">Produto</th>
+                            <th style="width: 15%;">NF-e</th>
+                            <th style="width: 10%;">Qtd/Unid.</th>
                         </tr>
                     </thead>
-                    <tbody id="unregisteredProductsTableBody">
+                    <tbody id="unregisteredEntriesTableBody">
                     </tbody>
                 </table>
 
                 <div style="text-align: center; margin-top: 20px;">
-                    <button onclick="showAddCatalogModal()" class="btn btn-success">
-                        <span>➕</span> Adicionar Produtos ao Catálogo
+                    <button onclick="showAddCompanyModal()" class="btn btn-success" style="margin-right: 10px;">
+                        <span>➕</span> Cadastrar Empresa
+                    </button>
+                    <button onclick="showAddProductModal()" class="btn btn-success">
+                        <span>➕</span> Cadastrar Produto
                     </button>
                 </div>
             </div>
