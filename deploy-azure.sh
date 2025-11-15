@@ -67,11 +67,11 @@ az webapp config set \
   --linux-fx-version "PYTHON|3.11" \
   > /dev/null
 
-# Set startup command to use our custom script
+# Set startup command to use our custom script (simple = faster startup)
 az webapp config set \
   --resource-group $RESOURCE_GROUP \
   --name $WEB_APP \
-  --startup-file "startup-azure.sh" \
+  --startup-file "startup-azure-simple.sh" \
   > /dev/null
 
 # Disable Oryx build (we'll install dependencies at runtime)
