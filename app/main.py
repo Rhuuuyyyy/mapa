@@ -8,9 +8,9 @@ from slowapi.errors import RateLimitExceeded
 from .config import settings
 from .database import engine, Base
 from .routers import admin, user
+import logging
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+logger = logging.getLogger(__name__)
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -21,6 +21,18 @@ app = FastAPI(
     version="1.0.0",
     debug=settings.debug
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on startup (non-blocking)"""
+    try:
+        logger.info("Creating database tables if they don't exist...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("✓ Database tables ready")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not create tables on startup: {e}")
+        logger.warning("Tables will be created on first database access")
 
 # Add rate limit handler
 app.state.limiter = limiter

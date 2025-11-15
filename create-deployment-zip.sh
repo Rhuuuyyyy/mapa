@@ -25,7 +25,7 @@ find templates -type f | sort
 find static -type f | sort
 
 # Configuration files
-ls -1 requirements.txt runtime.txt .deployment startup-azure-ultra-simple.sh startup-azure-simple.sh startup-azure.sh create_admin.py Makefile 2>/dev/null || true
+ls -1 requirements.txt runtime.txt .deployment startup-minimal.sh startup-azure-ultra-simple.sh startup-azure-simple.sh startup-azure.sh create_admin.py Makefile 2>/dev/null || true
 
 echo ""
 echo "📦 Creating ZIP archive..."
@@ -38,6 +38,7 @@ zip -r $ZIP_FILE \
   requirements.txt \
   runtime.txt \
   .deployment \
+  startup-minimal.sh \
   startup-azure-ultra-simple.sh \
   startup-azure-simple.sh \
   startup-azure.sh \

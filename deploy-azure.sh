@@ -52,11 +52,11 @@ az webapp config set \
   --linux-fx-version "PYTHON|3.11" \
   > /dev/null
 
-# Set startup command to use our custom script (ultra simple = fastest)
+# Set startup command to use our custom script (minimal = direct uvicorn)
 az webapp config set \
   --resource-group $RESOURCE_GROUP \
   --name $WEB_APP \
-  --startup-file "startup-azure-ultra-simple.sh" \
+  --startup-file "startup-minimal.sh" \
   > /dev/null
 
 # Disable Oryx build (we'll install dependencies at runtime)
