@@ -36,14 +36,26 @@ const UploadXML = () => {
   const [showProductModal, setShowProductModal] = useState(false);
   const [productFormData, setProductFormData] = useState({
     product_name: '',
-    mapa_code: ''
+    mapa_registration: '',
+    company_id: ''
   });
   const [savingProduct, setSavingProduct] = useState(false);
   const [selectedProductIndex, setSelectedProductIndex] = useState(null);
+  const [userCompanies, setUserCompanies] = useState([]);
 
   useEffect(() => {
     loadUploadHistory();
+    loadUserCompanies();
   }, []);
+
+  const loadUserCompanies = async () => {
+    try {
+      const companies = await companiesAPI.getAll();
+      setUserCompanies(companies);
+    } catch (err) {
+      console.error('Erro ao carregar empresas:', err);
+    }
+  };
 
   const loadUploadHistory = async () => {
     try {
@@ -130,6 +142,9 @@ const UploadXML = () => {
       setSavingCompany(true);
       await companiesAPI.create(companyFormData);
 
+      // Recarregar lista de empresas
+      await loadUserCompanies();
+
       // Atualizar preview com empresa encontrada
       setPreviewData(prev => ({
         ...prev,
@@ -150,26 +165,37 @@ const UploadXML = () => {
     setSelectedProductIndex(productIndex);
     setProductFormData({
       product_name: produto.descricao || '',
-      mapa_code: produto.codigo || ''
+      mapa_registration: produto.codigo || '',
+      company_id: userCompanies.length > 0 ? userCompanies[0].id : ''
     });
     setShowProductModal(true);
   };
 
   const handleCloseProductModal = () => {
     setShowProductModal(false);
-    setProductFormData({ product_name: '', mapa_code: '' });
+    setProductFormData({ product_name: '', mapa_registration: '', company_id: '' });
     setSelectedProductIndex(null);
   };
 
   const handleSaveProduct = async () => {
-    if (!productFormData.product_name.trim() || !productFormData.mapa_code.trim()) {
-      alert('Preencha todos os campos');
+    if (!productFormData.product_name.trim() || !productFormData.mapa_registration.trim()) {
+      alert('Preencha o nome e código do produto');
+      return;
+    }
+
+    if (!productFormData.company_id) {
+      alert('Selecione uma empresa para vincular o produto');
       return;
     }
 
     try {
       setSavingProduct(true);
-      await productsAPI.create(productFormData);
+      const productData = {
+        product_name: productFormData.product_name,
+        mapa_registration: productFormData.mapa_registration,
+        company_id: parseInt(productFormData.company_id)
+      };
+      await productsAPI.create(productData);
 
       // Atualizar status do produto no preview
       setPreviewData(prev => {
@@ -187,7 +213,17 @@ const UploadXML = () => {
       handleCloseProductModal();
       alert('Produto cadastrado com sucesso!');
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao cadastrar produto');
+      // Melhor formatação de erro
+      let errorMsg = 'Erro ao cadastrar produto';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          errorMsg = detail.map(e => `${e.loc?.join('.')}: ${e.msg}`).join('\n');
+        } else if (typeof detail === 'string') {
+          errorMsg = detail;
+        }
+      }
+      alert(errorMsg);
     } finally {
       setSavingProduct(false);
     }
@@ -801,6 +837,33 @@ const UploadXML = () => {
               </div>
 
               <div className="space-y-4">
+                {userCompanies.length === 0 && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ Você precisa ter pelo menos uma empresa cadastrada para criar produtos.
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Empresa *
+                  </label>
+                  <select
+                    value={productFormData.company_id}
+                    onChange={(e) => setProductFormData(prev => ({ ...prev, company_id: e.target.value }))}
+                    className="input-field"
+                    disabled={userCompanies.length === 0}
+                  >
+                    <option value="">Selecione uma empresa</option>
+                    {userCompanies.map(company => (
+                      <option key={company.id} value={company.id}>
+                        {company.company_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nome do Produto *
@@ -816,15 +879,18 @@ const UploadXML = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código MAPA *
+                    Registro MAPA *
                   </label>
                   <input
                     type="text"
-                    value={productFormData.mapa_code}
-                    onChange={(e) => setProductFormData(prev => ({ ...prev, mapa_code: e.target.value }))}
+                    value={productFormData.mapa_registration}
+                    onChange={(e) => setProductFormData(prev => ({ ...prev, mapa_registration: e.target.value }))}
                     className="input-field"
-                    placeholder="Ex: 001-B"
+                    placeholder="Ex: 6.000001"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Código parcial do produto (ex: 6.000001). O código completo será formado junto com o registro da empresa.
+                  </p>
                 </div>
 
                 <div className="flex space-x-3 pt-4">
