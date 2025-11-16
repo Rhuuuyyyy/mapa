@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Download,
@@ -8,7 +8,9 @@ import {
   AlertCircle,
   TrendingUp,
   Building2,
-  Package
+  Package,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import { reports as reportsAPI } from '../services/api';
 
@@ -18,6 +20,24 @@ const Reports = () => {
   const [downloading, setDownloading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [reportHistory, setReportHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    loadReportHistory();
+  }, []);
+
+  const loadReportHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const history = await reportsAPI.getAll();
+      setReportHistory(history);
+    } catch (err) {
+      console.error('Erro ao carregar histórico de relatórios:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   // Gerar períodos dos últimos 2 anos (8 trimestres)
   const generatePeriods = () => {
@@ -60,6 +80,8 @@ const Reports = () => {
         message: 'Relatório gerado com sucesso!',
         data: response
       });
+      // Recarregar histórico
+      loadReportHistory();
     } catch (err) {
       console.error('Erro ao gerar relatório:', err);
 
@@ -184,6 +206,34 @@ const Reports = () => {
     }
   };
 
+  const handleDeleteReport = async (reportId) => {
+    if (!window.confirm('Tem certeza que deseja excluir este relatório?')) {
+      return;
+    }
+
+    try {
+      await reportsAPI.delete(reportId);
+      loadReportHistory();
+    } catch (err) {
+      alert('Erro ao excluir relatório');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   const getPeriodInfo = (periodValue) => {
     if (!periodValue) return null;
 
@@ -276,28 +326,54 @@ const Reports = () => {
                 </div>
               )}
 
-              {result && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start space-x-2">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-emerald-800 font-medium">{result.message}</p>
-                    {result.data && (
-                      <div className="mt-3 space-y-2 text-sm text-emerald-700">
-                        {result.data.total_companies !== undefined && (
-                          <div className="flex items-center">
-                            <Building2 className="w-4 h-4 mr-2" />
-                            <span>{result.data.total_companies} empresa(s) incluída(s)</span>
-                          </div>
-                        )}
-                        {result.data.total_products !== undefined && (
-                          <div className="flex items-center">
-                            <Package className="w-4 h-4 mr-2" />
-                            <span>{result.data.total_products} produto(s) incluído(s)</span>
-                          </div>
-                        )}
+              {result && result.data && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start space-x-2">
+                    <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-emerald-800 font-medium">{result.message}</p>
+                      <div className="mt-2 flex items-center space-x-4 text-sm text-emerald-700">
+                        <div className="flex items-center">
+                          <FileText className="w-4 h-4 mr-1" />
+                          <span>{result.data.total_nfes} NF-es processadas</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Package className="w-4 h-4 mr-1" />
+                          <span>{result.data.rows?.length || 0} produtos no relatório</span>
+                        </div>
                       </div>
-                    )}
+                    </div>
                   </div>
+
+                  {result.data.rows && result.data.rows.length > 0 && (
+                    <div className="card">
+                      <h3 className="font-semibold text-gray-900 mb-4">Dados do Relatório</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Registro MAPA</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unidade</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qtd. Importação</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qtd. Nacional</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {result.data.rows.map((row, index) => (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-900">{row.mapa_registration}</td>
+                                <td className="px-4 py-3 text-gray-700">{row.product_reference || '-'}</td>
+                                <td className="px-4 py-3 text-gray-700">{row.unit}</td>
+                                <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.quantity_import}</td>
+                                <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.quantity_domestic}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -439,6 +515,71 @@ const Reports = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Histórico de Relatórios */}
+      <div className="card">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Histórico de Relatórios</h2>
+
+        {loadingHistory ? (
+          <div className="text-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-2" />
+            <p className="text-sm text-gray-600">Carregando histórico...</p>
+          </div>
+        ) : reportHistory.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p>Nenhum relatório gerado ainda</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data de Geração</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {reportHistory.map((report) => (
+                  <tr key={report.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-4 h-4 text-emerald-600" />
+                        <span className="font-medium text-gray-900">{report.report_period}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {formatDate(report.generated_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedPeriod(report.report_period);
+                            handleGenerate();
+                          }}
+                          className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Visualizar"
+                        >
+                          <Eye className="w-4 h-4 text-emerald-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteReport(report.id)}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
