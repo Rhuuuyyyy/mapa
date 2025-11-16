@@ -50,6 +50,67 @@ async def login(
     }
 
 
+@router.post("/auth/setup-first-admin", response_model=schemas.UserResponse)
+async def setup_first_admin(
+    user_data: schemas.UserCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    ENDPOINT TEMPORÁRIO: Cria o primeiro usuário admin.
+
+    ⚠️ IMPORTANTE: Este endpoint só funciona se não existir nenhum admin.
+    Após criar o primeiro admin, este endpoint retorna erro 403.
+
+    REMOVA ESTE ENDPOINT EM PRODUÇÃO após criar o admin inicial!
+    """
+    # Verificar se já existe algum admin
+    existing_admin = db.query(models.User).filter(
+        models.User.is_admin == True
+    ).first()
+
+    if existing_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Já existe um administrador no sistema. Use o login normal."
+        )
+
+    # Verificar se email já existe
+    existing_user = db.query(models.User).filter(
+        models.User.email == user_data.email
+    ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email já cadastrado"
+        )
+
+    # Validar força da senha
+    is_valid, message = auth.validate_password_strength(user_data.password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    # Criar primeiro admin
+    hashed_password = auth.get_password_hash(user_data.password)
+    new_admin = models.User(
+        email=user_data.email,
+        hashed_password=hashed_password,
+        full_name=user_data.full_name,
+        company_name=user_data.company_name,
+        is_admin=True,  # Forçar como admin
+        is_active=True
+    )
+
+    db.add(new_admin)
+    db.commit()
+    db.refresh(new_admin)
+
+    return new_admin
+
+
 @router.get("/me", response_model=schemas.UserResponse)
 async def get_current_user_info(
     current_user: models.User = Depends(auth.get_current_user)

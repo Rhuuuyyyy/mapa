@@ -14,8 +14,9 @@ Sistema de Automação de Relatórios MAPA (Ministério da Agricultura, Pecuári
 **Última atualização**: 2025-11-16
 
 📖 **Guias rápidos**:
+- ⭐ [CRIAR_ADMIN_FACIL.md](CRIAR_ADMIN_FACIL.md) - **MAIS FÁCIL**: Criar admin pelo navegador (Swagger)
 - [DEPLOY_SUCESSO.md](DEPLOY_SUCESSO.md) - Detalhes do deploy concluído
-- [CRIAR_ADMIN.md](CRIAR_ADMIN.md) - Como criar o primeiro usuário admin
+- [CRIAR_ADMIN.md](CRIAR_ADMIN.md) - Métodos alternativos para criar admin
 
 ## Sobre o Projeto
 
