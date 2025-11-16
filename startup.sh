@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 # =============================================================================
-# MAPA SaaS - Startup Script (Único e Limpo!)
+# MAPA SaaS - Startup Script (Compatível com sh/dash)
 # Produção Azure
 # =============================================================================
 
@@ -13,7 +13,7 @@ echo "============================================"
 # 1. Ativar venv (Azure cria automaticamente em antenv/)
 echo "📦 Activating virtual environment..."
 if [ -d "antenv" ]; then
-    source antenv/bin/activate
+    . antenv/bin/activate
     echo "✓ Virtual environment activated"
 else
     echo "⚠️  No virtual environment found (antenv/), using system Python"
