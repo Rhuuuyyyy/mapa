@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import UploadXML from './pages/UploadXML';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -78,10 +79,7 @@ function App() {
             path="/upload"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Upload de XML</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <UploadXML />
               </ProtectedRoute>
             }
           />
