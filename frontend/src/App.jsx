@@ -4,6 +4,12 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import UploadXML from './pages/UploadXML';
+import Companies from './pages/Companies';
+import Products from './pages/Products';
+import Reports from './pages/Reports';
+import Catalog from './pages/Catalog';
+import Users from './pages/Users';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -78,10 +84,7 @@ function App() {
             path="/upload"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Upload de XML</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <UploadXML />
               </ProtectedRoute>
             }
           />
@@ -90,10 +93,7 @@ function App() {
             path="/companies"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Empresas</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <Companies />
               </ProtectedRoute>
             }
           />
@@ -102,10 +102,7 @@ function App() {
             path="/products"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Produtos</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <Products />
               </ProtectedRoute>
             }
           />
@@ -114,10 +111,7 @@ function App() {
             path="/reports"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Relatórios</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <Reports />
               </ProtectedRoute>
             }
           />
@@ -126,10 +120,7 @@ function App() {
             path="/catalog"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Catálogo</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <Catalog />
               </ProtectedRoute>
             }
           />
@@ -138,10 +129,7 @@ function App() {
             path="/users"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Gestão de Usuários</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <Users />
               </ProtectedRoute>
             }
           />

@@ -120,6 +120,11 @@ export const companies = {
 // ============================================================================
 
 export const products = {
+  getAll: async () => {
+    const response = await api.get('/user/products');
+    return response.data;
+  },
+
   getByCompany: async (companyId) => {
     const response = await api.get(`/user/companies/${companyId}/products`);
     return response.data;

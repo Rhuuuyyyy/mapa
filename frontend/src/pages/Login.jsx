@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, Mail, AlertCircle, Loader2, Leaf } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader2, Leaf, FileText, TrendingUp, CheckCircle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -40,27 +40,67 @@ const Login = () => {
   return (
     <div className="min-h-screen flex">
       {/* Lado esquerdo - Ilustração/Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-emerald relative overflow-hidden">
-        <div className="absolute inset-0 bg-black opacity-10"></div>
-        <div className="relative z-10 flex flex-col justify-center items-center text-white p-12">
-          <div className="mb-8">
-            <Leaf className="w-20 h-20 mb-4 animate-pulse" />
-          </div>
-          <h1 className="text-5xl font-bold mb-4">MAPA SaaS</h1>
-          <p className="text-xl text-emerald-100 text-center max-w-md">
-            Sistema de Automação de Relatórios MAPA
-          </p>
-          <div className="mt-12 text-emerald-100">
-            <p className="text-sm">✓ Processamento automático de XMLs</p>
-            <p className="text-sm mt-2">✓ Geração de relatórios trimestrais</p>
-            <p className="text-sm mt-2">✓ Gestão de catálogo hierárquico</p>
-          </div>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-600 to-emerald-800 relative">
+        {/* Background decorativo */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         </div>
 
-        {/* Decoração de fundo */}
-        <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-emerald-800 to-transparent"></div>
-        <div className="absolute top-10 right-10 w-64 h-64 bg-emerald-400 rounded-full opacity-20 blur-3xl"></div>
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-emerald-300 rounded-full opacity-10 blur-3xl"></div>
+        {/* Conteúdo */}
+        <div className="relative z-10 flex flex-col justify-center items-start px-16 py-12 w-full">
+          <div className="mb-8">
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
+              <Leaf className="w-10 h-10 text-white" />
+            </div>
+            <h1 className="text-5xl font-bold text-white mb-4">MAPA SaaS</h1>
+            <p className="text-2xl text-emerald-100 mb-2">
+              Sistema de Automação
+            </p>
+            <p className="text-lg text-emerald-200">
+              Relatórios MAPA simplificados
+            </p>
+          </div>
+
+          <div className="space-y-6 text-white/90 mt-8">
+            <div className="flex items-start space-x-4">
+              <div className="mt-1 bg-white/20 p-2 rounded-lg">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">Processamento Automático</h3>
+                <p className="text-sm text-emerald-100">Upload e análise de XMLs de NF-e em segundos</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="mt-1 bg-white/20 p-2 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">Relatórios Trimestrais</h3>
+                <p className="text-sm text-emerald-100">Geração automática no formato oficial MAPA</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="mt-1 bg-white/20 p-2 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">Gestão Inteligente</h3>
+                <p className="text-sm text-emerald-100">Catálogo hierárquico de empresas e produtos</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-auto pt-12">
+            <div className="flex items-center space-x-2 text-emerald-100 text-sm">
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+              <span>Sistema 100% online e seguro</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Lado direito - Formulário */}
@@ -69,14 +109,16 @@ const Login = () => {
           {/* Logo mobile */}
           <div className="lg:hidden flex justify-center mb-8">
             <div className="flex items-center space-x-3">
-              <Leaf className="w-10 h-10 text-emerald-600" />
+              <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center">
+                <Leaf className="w-7 h-7 text-white" />
+              </div>
               <h1 className="text-3xl font-bold text-gradient">MAPA SaaS</h1>
             </div>
           </div>
 
           <div className="card shadow-emerald-lg">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Bem-vindo!</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Bem-vindo de volta!</h2>
               <p className="text-gray-600">Entre com suas credenciais para continuar</p>
             </div>
 
@@ -106,6 +148,7 @@ const Login = () => {
                     className="input-field pl-10"
                     placeholder="seu@email.com"
                     disabled={loading}
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -128,6 +171,7 @@ const Login = () => {
                     className="input-field pl-10"
                     placeholder="••••••••"
                     disabled={loading}
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
@@ -138,24 +182,24 @@ const Login = () => {
                     id="remember"
                     name="remember"
                     type="checkbox"
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
                   />
-                  <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">
+                  <label htmlFor="remember" className="ml-2 block text-sm text-gray-700 cursor-pointer">
                     Lembrar-me
                   </label>
                 </div>
 
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
+                  <button type="button" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
                     Esqueceu a senha?
-                  </a>
+                  </button>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-primary w-full flex items-center justify-center space-x-2"
+                className="btn-primary w-full flex items-center justify-center space-x-2 h-12"
               >
                 {loading ? (
                   <>
@@ -171,9 +215,9 @@ const Login = () => {
             <div className="mt-6 text-center text-sm text-gray-600">
               <p>
                 Não tem uma conta?{' '}
-                <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
+                <button type="button" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
                   Entre em contato com o administrador
-                </a>
+                </button>
               </p>
             </div>
           </div>
