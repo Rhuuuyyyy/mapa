@@ -154,7 +154,7 @@ export const xmlUploads = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await api.post('/user/xml/upload', formData, {
+    const response = await api.post('/user/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -163,7 +163,7 @@ export const xmlUploads = {
   },
 
   getHistory: async () => {
-    const response = await api.get('/user/xml/history');
+    const response = await api.get('/user/uploads');
     return response.data;
   },
 };
@@ -174,12 +174,13 @@ export const xmlUploads = {
 
 export const reports = {
   generate: async (period) => {
-    const response = await api.post('/user/reports/generate', { period });
+    const response = await api.post('/user/generate-report', { period });
     return response.data;
   },
 
   download: async (period) => {
-    const response = await api.get(`/user/reports/download/${period}`, {
+    // Nota: endpoint de download pode não existir, usar o generate por enquanto
+    const response = await api.post('/user/generate-report', { period }, {
       responseType: 'blob',
     });
     return response.data;

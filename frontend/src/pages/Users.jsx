@@ -100,8 +100,8 @@ const Users = () => {
 
     if (!editingUser && !formData.password) {
       newErrors.password = 'Senha é obrigatória para novos usuários';
-    } else if (formData.password && formData.password.length < 8) {
-      newErrors.password = 'Senha deve ter pelo menos 8 caracteres';
+    } else if (formData.password && formData.password.length < 12) {
+      newErrors.password = 'Senha deve ter pelo menos 12 caracteres';
     }
 
     setErrors(newErrors);
@@ -136,8 +136,21 @@ const Users = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Erro ao salvar usuário:', error);
+
+      // Extrair mensagem de erro do backend
+      let errorMessage = 'Erro ao salvar usuário';
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (Array.isArray(detail)) {
+          // Erros de validação do Pydantic
+          errorMessage = detail.map(err => err.msg || err.message).join(', ');
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+
       setErrors({
-        submit: error.response?.data?.detail || 'Erro ao salvar usuário'
+        submit: errorMessage
       });
     } finally {
       setSubmitting(false);
@@ -361,7 +374,7 @@ const Users = () => {
                     value={formData.password}
                     onChange={handleInputChange}
                     className={`input-field pr-10 ${errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}`}
-                    placeholder={editingUser ? 'Digite para alterar' : 'Mínimo 8 caracteres'}
+                    placeholder={editingUser ? 'Digite para alterar' : 'Mínimo 12 caracteres'}
                   />
                   <button
                     type="button"
