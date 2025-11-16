@@ -77,6 +77,51 @@ async def list_companies(
     return companies
 
 
+@router.patch("/companies/{company_id}", response_model=schemas.CompanyResponse)
+async def update_company(
+    company_id: int,
+    company_data: schemas.CompanyCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Atualiza dados de uma empresa.
+    """
+    company = db.query(models.Company).filter(
+        models.Company.id == company_id,
+        models.Company.user_id == current_user.id
+    ).first()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada"
+        )
+
+    # Verificar se novo nome já existe (exceto para a própria empresa)
+    if company_data.company_name.strip() != company.company_name:
+        existing = db.query(models.Company).filter(
+            models.Company.user_id == current_user.id,
+            models.Company.company_name == company_data.company_name.strip(),
+            models.Company.id != company_id
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Empresa '{company_data.company_name}' já cadastrada"
+            )
+
+    # Atualizar campos
+    company.company_name = company_data.company_name.strip()
+    company.mapa_registration = company_data.mapa_registration.strip()
+
+    db.commit()
+    db.refresh(company)
+
+    return company
+
+
 @router.delete("/companies/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_company(
     company_id: int,
@@ -170,6 +215,52 @@ async def list_products(
 
     products = query.all()
     return products
+
+
+@router.patch("/products/{product_id}", response_model=schemas.ProductResponse)
+async def update_product(
+    product_id: int,
+    product_data: schemas.ProductCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Atualiza dados de um produto.
+    """
+    product = db.query(models.Product).join(models.Company).filter(
+        models.Product.id == product_id,
+        models.Company.user_id == current_user.id
+    ).first()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado"
+        )
+
+    # Verificar se a nova empresa pertence ao usuário
+    if product_data.company_id != product.company_id:
+        new_company = db.query(models.Company).filter(
+            models.Company.id == product_data.company_id,
+            models.Company.user_id == current_user.id
+        ).first()
+
+        if not new_company:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Empresa não encontrada"
+            )
+
+    # Atualizar campos
+    product.product_name = product_data.product_name.strip()
+    product.product_type = product_data.product_type
+    product.company_id = product_data.company_id
+    product.mapa_registration = product_data.mapa_registration.strip()
+
+    db.commit()
+    db.refresh(product)
+
+    return product
 
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
