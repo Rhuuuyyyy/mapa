@@ -366,17 +366,25 @@ async def upload_xml_preview(
         # Extrair dados do XML
         xml_data = nfe_data.to_dict()
 
-        # Verificar empresas cadastradas do usuário
+        # Buscar empresas e produtos do usuário em queries otimizadas
         user_companies = db.query(models.Company).filter(
             models.Company.user_id == current_user.id
         ).all()
 
-        # Tentar match de empresa pelo CNPJ do emitente
+        user_products = db.query(models.Product).join(
+            models.Company, models.Product.company_id == models.Company.id
+        ).filter(
+            models.Company.user_id == current_user.id
+        ).all()
+
+        # Match de empresa pelo nome (case-insensitive)
         matched_company = None
-        for company in user_companies:
-            if company.mapa_registration and xml_data.get('emitente', {}).get('cnpj'):
-                # Extrair CNPJ do registro MAPA (primeiros 14 dígitos após UF)
-                pass
+        emitente_nome = xml_data.get('emitente', {}).get('razao_social', '').strip().lower()
+        if emitente_nome:
+            for company in user_companies:
+                if company.company_name.lower().strip() == emitente_nome:
+                    matched_company = company
+                    break
 
         # Calcular período trimestral da NF-e
         periodo_trimestral = None
@@ -392,21 +400,16 @@ async def upload_xml_preview(
 
         # Verificar quais produtos estão cadastrados
         produtos_status = []
-        user_products = db.query(models.Product).filter(
-            models.Product.user_id == current_user.id
-        ).all()
 
-        # Criar dicionário de produtos cadastrados para busca rápida
-        produtos_cadastrados = {p.product_name.lower(): p for p in user_products}
+        # Criar set de nomes de produtos para busca O(1)
+        produtos_cadastrados_set = {p.product_name.lower().strip() for p in user_products}
 
         for produto in xml_data.get('produtos', []):
-            descricao = produto.get('descricao', '')
-            codigo = produto.get('codigo', '')
-            # Verificar se produto está cadastrado (por nome ou código)
-            cadastrado = (
-                descricao.lower() in produtos_cadastrados or
-                any(p.product_name.lower() == descricao.lower() for p in user_products)
-            )
+            descricao = produto.get('descricao', '').strip()
+            codigo = produto.get('codigo', '').strip()
+            # Verificar se produto está cadastrado (comparação case-insensitive)
+            cadastrado = descricao.lower() in produtos_cadastrados_set if descricao else False
+
             produtos_status.append({
                 'descricao': descricao,
                 'codigo': codigo,
