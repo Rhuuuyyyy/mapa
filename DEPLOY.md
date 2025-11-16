@@ -422,18 +422,57 @@ az postgres flexible-server firewall-rule create \
     --end-ip-address 0.0.0.0
 ```
 
+### ❌ Pydantic validation error: "error parsing value for field allowed_origins"
+
+**Causa:** ALLOWED_ORIGINS configurado incorretamente (tentativa de usar JSON array)
+
+**Sintoma:** Logs mostram:
+```
+pydantic_settings.sources.SettingsError: error parsing value for field "allowed_origins"
+gunicorn.errors.HaltServer: Worker failed to boot. Exit code 3
+```
+
+**Solução:**
+
+A partir da v2.0.0, ALLOWED_ORIGINS aceita uma string simples:
+
+```bash
+# Para permitir todas as origens (desenvolvimento)
+az webapp config appsettings set \
+    --resource-group mapa-saas-clean \
+    --name mapa-app-clean-67890 \
+    --settings ALLOWED_ORIGINS="*"
+
+# Para múltiplas origens (produção) - use vírgula, sem espaços
+az webapp config appsettings set \
+    --resource-group mapa-saas-clean \
+    --name mapa-app-clean-67890 \
+    --settings ALLOWED_ORIGINS="https://mapa-app-clean-67890.azurewebsites.net,https://www.example.com"
+
+# Reiniciar app
+az webapp restart --resource-group mapa-saas-clean --name mapa-app-clean-67890
+```
+
+**Nota:** Não use JSON array `["url1","url2"]` - isso causa problemas de escaping no Bash.
+
 ### ❌ CORS error no frontend
 
-**Causa:** `ALLOWED_ORIGINS` não configurado
+**Causa:** `ALLOWED_ORIGINS` não configurado ou configurado incorretamente
 
 **Solução:**
 
 ```bash
+# Permitir todas as origens
 az webapp config appsettings set \
     --resource-group mapa-saas-clean \
     --name mapa-app-clean-67890 \
-    --settings \
-        ALLOWED_ORIGINS="https://mapa-app-clean-67890.azurewebsites.net"
+    --settings ALLOWED_ORIGINS="*"
+
+# Ou especificar origens específicas (separadas por vírgula, sem espaços)
+az webapp config appsettings set \
+    --resource-group mapa-saas-clean \
+    --name mapa-app-clean-67890 \
+    --settings ALLOWED_ORIGINS="https://mapa-app-clean-67890.azurewebsites.net"
 ```
 
 ---
