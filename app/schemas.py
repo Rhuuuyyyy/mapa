@@ -143,6 +143,23 @@ class XMLUploadResponse(BaseModel):
         from_attributes = True
 
 
+class XMLPreviewResponse(BaseModel):
+    """Schema de resposta de preview de XML"""
+    temp_file_path: str
+    filename: str
+    nfe_data: dict
+    periodo_trimestral: Optional[str]
+    empresa_encontrada: Optional[str]
+    total_produtos: int
+
+
+class XMLUploadConfirm(BaseModel):
+    """Schema para confirmar upload após preview"""
+    temp_file_path: str
+    filename: str
+    nfe_data: Optional[dict] = None  # Dados editados pelo usuário
+
+
 # ============================================================================
 # REPORT SCHEMAS
 # ============================================================================

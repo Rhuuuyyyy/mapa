@@ -316,6 +316,163 @@ async def get_catalog(
 # XML UPLOAD
 # ============================================================================
 
+@router.post("/upload-preview", response_model=schemas.XMLPreviewResponse)
+async def upload_xml_preview(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Faz preview do XML sem salvar no banco.
+    Retorna dados extraídos para revisão do usuário.
+    """
+    # Validar arquivo
+    try:
+        content = await file.read()
+        validate_file_security(file.filename, content, settings.max_upload_size)
+        await file.seek(0)  # Reset file pointer
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    # Criar diretório temporário
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    temp_dir = Path(settings.upload_dir) / "temp" / f"user_{current_user.id}"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Salvar arquivo temporariamente
+    safe_filename = f"{timestamp}_{file.filename}"
+    temp_file_path = temp_dir / safe_filename
+
+    try:
+        with open(temp_file_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao salvar arquivo: {str(e)}"
+        )
+
+    # Processar arquivo para preview
+    try:
+        processor = NFeProcessor()
+        nfe_data = processor.process_file(str(temp_file_path))
+
+        if not nfe_data:
+            raise ValueError("Não foi possível extrair dados do arquivo")
+
+        # Extrair dados do XML
+        xml_data = nfe_data.to_dict()
+
+        # Verificar empresas cadastradas do usuário
+        user_companies = db.query(models.Company).filter(
+            models.Company.user_id == current_user.id
+        ).all()
+
+        # Tentar match de empresa pelo CNPJ do emitente
+        matched_company = None
+        for company in user_companies:
+            if company.mapa_registration and xml_data.get('emitente', {}).get('cnpj'):
+                # Extrair CNPJ do registro MAPA (primeiros 14 dígitos após UF)
+                pass
+
+        # Calcular período trimestral da NF-e
+        periodo_trimestral = None
+        if xml_data.get('data_emissao'):
+            try:
+                from datetime import datetime as dt
+                data_emissao = dt.fromisoformat(xml_data['data_emissao'].split('T')[0])
+                ano = data_emissao.year
+                trimestre = (data_emissao.month - 1) // 3 + 1
+                periodo_trimestral = f"{ano}Q{trimestre}"
+            except:
+                pass
+
+        # Retornar preview
+        return {
+            "temp_file_path": str(temp_file_path),
+            "filename": file.filename,
+            "nfe_data": xml_data,
+            "periodo_trimestral": periodo_trimestral,
+            "empresa_encontrada": matched_company.company_name if matched_company else None,
+            "total_produtos": len(xml_data.get('produtos', []))
+        }
+
+    except Exception as e:
+        # Limpar arquivo temporário em caso de erro
+        if temp_file_path.exists():
+            temp_file_path.unlink()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Erro ao processar arquivo: {str(e)}"
+        )
+
+
+@router.post("/upload-confirm", response_model=schemas.XMLUploadResponse, status_code=status.HTTP_201_CREATED)
+async def upload_xml_confirm(
+    upload_data: schemas.XMLUploadConfirm,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Confirma upload após revisão do usuário.
+    Move arquivo para pasta permanente e salva no banco.
+    """
+    temp_file_path = Path(upload_data.temp_file_path)
+
+    # Validar que arquivo temporário existe e pertence ao usuário
+    if not temp_file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Arquivo temporário não encontrado ou expirou"
+        )
+
+    if f"user_{current_user.id}" not in str(temp_file_path):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a este arquivo"
+        )
+
+    # Criar diretório permanente
+    user_upload_dir = Path(settings.upload_dir) / f"user_{current_user.id}"
+    user_upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Mover arquivo para pasta permanente
+    permanent_path = user_upload_dir / temp_file_path.name
+
+    try:
+        shutil.move(str(temp_file_path), str(permanent_path))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao mover arquivo: {str(e)}"
+        )
+
+    # Criar registro no banco com dados confirmados/editados
+    xml_upload = models.XMLUpload(
+        user_id=current_user.id,
+        filename=upload_data.filename,
+        file_path=str(permanent_path),
+        status="processed"
+    )
+
+    db.add(xml_upload)
+    db.commit()
+    db.refresh(xml_upload)
+
+    # Limpar diretório temporário se vazio
+    try:
+        temp_dir = temp_file_path.parent
+        if temp_dir.exists() and not list(temp_dir.iterdir()):
+            temp_dir.rmdir()
+    except:
+        pass
+
+    return xml_upload
+
+
 @router.post("/upload", response_model=schemas.XMLUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_xml(
     file: UploadFile = File(...),
@@ -323,7 +480,7 @@ async def upload_xml(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Upload de arquivo XML ou PDF de NF-e.
+    Upload de arquivo XML ou PDF de NF-e (upload direto sem preview).
     Valida segurança e processa arquivo.
     """
     # Validar arquivo
