@@ -390,6 +390,29 @@ async def upload_xml_preview(
             except:
                 pass
 
+        # Verificar quais produtos estão cadastrados
+        produtos_status = []
+        user_products = db.query(models.Product).filter(
+            models.Product.user_id == current_user.id
+        ).all()
+
+        # Criar dicionário de produtos cadastrados para busca rápida
+        produtos_cadastrados = {p.product_name.lower(): p for p in user_products}
+
+        for produto in xml_data.get('produtos', []):
+            descricao = produto.get('descricao', '')
+            codigo = produto.get('codigo', '')
+            # Verificar se produto está cadastrado (por nome ou código)
+            cadastrado = (
+                descricao.lower() in produtos_cadastrados or
+                any(p.product_name.lower() == descricao.lower() for p in user_products)
+            )
+            produtos_status.append({
+                'descricao': descricao,
+                'codigo': codigo,
+                'cadastrado': cadastrado
+            })
+
         # Retornar preview
         return {
             "temp_file_path": str(temp_file_path),
@@ -397,7 +420,8 @@ async def upload_xml_preview(
             "nfe_data": xml_data,
             "periodo_trimestral": periodo_trimestral,
             "empresa_encontrada": matched_company.company_name if matched_company else None,
-            "total_produtos": len(xml_data.get('produtos', []))
+            "total_produtos": len(xml_data.get('produtos', [])),
+            "produtos_status": produtos_status
         }
 
     except Exception as e:

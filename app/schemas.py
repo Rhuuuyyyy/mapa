@@ -151,6 +151,7 @@ class XMLPreviewResponse(BaseModel):
     periodo_trimestral: Optional[str]
     empresa_encontrada: Optional[str]
     total_produtos: int
+    produtos_status: list  # Lista com {descricao, codigo, cadastrado: bool}
 
 
 class XMLUploadConfirm(BaseModel):

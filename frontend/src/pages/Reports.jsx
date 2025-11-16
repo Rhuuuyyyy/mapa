@@ -63,8 +63,10 @@ const Reports = () => {
     } catch (err) {
       console.error('Erro ao gerar relatório:', err);
 
-      // Extrair mensagem de erro do backend
+      // Extrair e formatar mensagem de erro do backend
       let errorMessage = 'Erro ao gerar relatório';
+      let errorDetails = [];
+
       if (err.response?.data?.detail) {
         const detail = err.response.data.detail;
         if (Array.isArray(detail)) {
@@ -72,11 +74,33 @@ const Reports = () => {
           errorMessage = detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
         } else if (typeof detail === 'string') {
           errorMessage = detail;
+
+          // Identificar erros específicos e fornecer mensagens mais claras
+          if (detail.toLowerCase().includes('produto') && detail.toLowerCase().includes('não cadastrado')) {
+            errorMessage = '⚠️ Produto não cadastrado encontrado';
+            errorDetails.push('Um ou mais produtos das notas fiscais não estão cadastrados no sistema.');
+            errorDetails.push('Por favor, cadastre todos os produtos antes de gerar o relatório.');
+            errorDetails.push('Acesse "Produtos" no menu para cadastrar os produtos faltantes.');
+          } else if (detail.toLowerCase().includes('empresa') && detail.toLowerCase().includes('não cadastrada')) {
+            errorMessage = '⚠️ Empresa não cadastrada encontrada';
+            errorDetails.push('Uma ou mais empresas das notas fiscais não estão cadastradas no sistema.');
+            errorDetails.push('Por favor, cadastre todas as empresas antes de gerar o relatório.');
+            errorDetails.push('Acesse "Empresas" no menu para cadastrar as empresas faltantes.');
+          } else if (detail.toLowerCase().includes('nenhum dado encontrado')) {
+            errorMessage = '📊 Nenhum dado para o período';
+            errorDetails.push('Não foram encontradas notas fiscais para o período selecionado.');
+            errorDetails.push('Faça upload de XMLs de NF-e para gerar relatórios.');
+          }
         } else if (typeof detail === 'object') {
           errorMessage = JSON.stringify(detail);
         }
       } else if (err.message) {
         errorMessage = err.message;
+      }
+
+      // Combinar mensagem principal com detalhes
+      if (errorDetails.length > 0) {
+        errorMessage = errorMessage + '\n\n' + errorDetails.join('\n');
       }
 
       setError(errorMessage);
@@ -114,8 +138,10 @@ const Reports = () => {
     } catch (err) {
       console.error('Erro ao baixar relatório:', err);
 
-      // Extrair mensagem de erro do backend
+      // Extrair e formatar mensagem de erro do backend
       let errorMessage = 'Erro ao baixar relatório';
+      let errorDetails = [];
+
       if (err.response?.data?.detail) {
         const detail = err.response.data.detail;
         if (Array.isArray(detail)) {
@@ -123,11 +149,33 @@ const Reports = () => {
           errorMessage = detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
         } else if (typeof detail === 'string') {
           errorMessage = detail;
+
+          // Identificar erros específicos e fornecer mensagens mais claras
+          if (detail.toLowerCase().includes('produto') && detail.toLowerCase().includes('não cadastrado')) {
+            errorMessage = '⚠️ Produto não cadastrado encontrado';
+            errorDetails.push('Um ou mais produtos das notas fiscais não estão cadastrados no sistema.');
+            errorDetails.push('Por favor, cadastre todos os produtos antes de baixar o relatório.');
+            errorDetails.push('Acesse "Produtos" no menu para cadastrar os produtos faltantes.');
+          } else if (detail.toLowerCase().includes('empresa') && detail.toLowerCase().includes('não cadastrada')) {
+            errorMessage = '⚠️ Empresa não cadastrada encontrada';
+            errorDetails.push('Uma ou mais empresas das notas fiscais não estão cadastradas no sistema.');
+            errorDetails.push('Por favor, cadastre todas as empresas antes de baixar o relatório.');
+            errorDetails.push('Acesse "Empresas" no menu para cadastrar as empresas faltantes.');
+          } else if (detail.toLowerCase().includes('nenhum dado encontrado')) {
+            errorMessage = '📊 Nenhum dado para o período';
+            errorDetails.push('Não foram encontradas notas fiscais para o período selecionado.');
+            errorDetails.push('Faça upload de XMLs de NF-e para gerar relatórios.');
+          }
         } else if (typeof detail === 'object') {
           errorMessage = JSON.stringify(detail);
         }
       } else if (err.message) {
         errorMessage = err.message;
+      }
+
+      // Combinar mensagem principal com detalhes
+      if (errorDetails.length > 0) {
+        errorMessage = errorMessage + '\n\n' + errorDetails.join('\n');
       }
 
       setError(errorMessage);
@@ -220,9 +268,11 @@ const Reports = () => {
               )}
 
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
+                <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg flex items-start space-x-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-800">{error}</p>
+                  <div className="flex-1">
+                    <p className="text-sm text-red-800 whitespace-pre-line">{error}</p>
+                  </div>
                 </div>
               )}
 

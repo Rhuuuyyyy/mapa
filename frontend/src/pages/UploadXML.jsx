@@ -16,7 +16,7 @@ import {
   Plus,
   X
 } from 'lucide-react';
-import { xmlUploads as xmlUploadsAPI, companies as companiesAPI } from '../services/api';
+import { xmlUploads as xmlUploadsAPI, companies as companiesAPI, products as productsAPI } from '../services/api';
 
 const UploadXML = () => {
   const [step, setStep] = useState('upload'); // 'upload', 'preview', 'success'
@@ -33,6 +33,13 @@ const UploadXML = () => {
     mapa_registration: ''
   });
   const [savingCompany, setSavingCompany] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [productFormData, setProductFormData] = useState({
+    product_name: '',
+    mapa_code: ''
+  });
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(null);
 
   useEffect(() => {
     loadUploadHistory();
@@ -135,6 +142,54 @@ const UploadXML = () => {
       alert(err.response?.data?.detail || 'Erro ao cadastrar empresa');
     } finally {
       setSavingCompany(false);
+    }
+  };
+
+  const handleOpenProductModal = (productIndex) => {
+    const produto = previewData.produtos_status[productIndex];
+    setSelectedProductIndex(productIndex);
+    setProductFormData({
+      product_name: produto.descricao || '',
+      mapa_code: produto.codigo || ''
+    });
+    setShowProductModal(true);
+  };
+
+  const handleCloseProductModal = () => {
+    setShowProductModal(false);
+    setProductFormData({ product_name: '', mapa_code: '' });
+    setSelectedProductIndex(null);
+  };
+
+  const handleSaveProduct = async () => {
+    if (!productFormData.product_name.trim() || !productFormData.mapa_code.trim()) {
+      alert('Preencha todos os campos');
+      return;
+    }
+
+    try {
+      setSavingProduct(true);
+      await productsAPI.create(productFormData);
+
+      // Atualizar status do produto no preview
+      setPreviewData(prev => {
+        const newProdutosStatus = [...prev.produtos_status];
+        newProdutosStatus[selectedProductIndex] = {
+          ...newProdutosStatus[selectedProductIndex],
+          cadastrado: true
+        };
+        return {
+          ...prev,
+          produtos_status: newProdutosStatus
+        };
+      });
+
+      handleCloseProductModal();
+      alert('Produto cadastrado com sucesso!');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Erro ao cadastrar produto');
+    } finally {
+      setSavingProduct(false);
     }
   };
 
@@ -543,31 +598,52 @@ const UploadXML = () => {
         )}
 
         {/* Produtos */}
-        {nfe.produtos && nfe.produtos.length > 0 && (
+        {previewData.produtos_status && previewData.produtos_status.length > 0 && (
           <div className="card">
             <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
               <Package className="w-5 h-5 mr-2 text-emerald-600" />
-              Produtos ({nfe.produtos.length})
+              Produtos ({previewData.produtos_status.length})
             </h3>
             <div className="space-y-3">
-              {nfe.produtos.map((produto, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg">
+              {previewData.produtos_status.map((produto, index) => (
+                <div
+                  key={index}
+                  className={`p-4 rounded-lg border-2 ${
+                    produto.cadastrado
+                      ? 'bg-emerald-50 border-emerald-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {produto.descricao || `Produto ${index + 1}`}
-                      </p>
+                      <div className="flex items-center space-x-2">
+                        {produto.cadastrado ? (
+                          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                        )}
+                        <p className={`font-medium ${produto.cadastrado ? 'text-emerald-900' : 'text-red-900'}`}>
+                          {produto.descricao || `Produto ${index + 1}`}
+                        </p>
+                      </div>
                       {produto.codigo && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className={`text-sm mt-1 ml-7 ${produto.cadastrado ? 'text-emerald-700' : 'text-red-700'}`}>
                           Código: {produto.codigo}
                         </p>
                       )}
-                      {produto.quantidade && (
-                        <p className="text-sm text-gray-600">
-                          Quantidade: {produto.quantidade} {produto.unidade || ''}
-                        </p>
-                      )}
+                      <p className={`text-sm mt-1 ml-7 ${produto.cadastrado ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {produto.cadastrado ? 'Produto cadastrado no sistema' : 'Produto não encontrado no sistema'}
+                      </p>
                     </div>
+                    {!produto.cadastrado && (
+                      <button
+                        onClick={() => handleOpenProductModal(index)}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Cadastrar
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -577,31 +653,65 @@ const UploadXML = () => {
 
         {/* Botões de Ação */}
         <div className="card bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-1">Confirmar Upload?</h3>
-              <p className="text-sm text-gray-600">
-                Os dados estão corretos? Ao confirmar, o arquivo será processado e contabilizado no relatório.
-              </p>
-            </div>
-            <button
-              onClick={handleConfirm}
-              disabled={confirming}
-              className="btn-primary"
-            >
-              {confirming ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  Confirmando...
-                </>
-              ) : (
-                <>
-                  Confirmar e Processar
-                  <ChevronRight className="w-5 h-5 ml-2" />
-                </>
-              )}
-            </button>
-          </div>
+          {(() => {
+            const empresaNaoCadastrada = !previewData.empresa_encontrada;
+            const produtosNaoCadastrados = previewData.produtos_status?.filter(p => !p.cadastrado) || [];
+            const temPendencias = empresaNaoCadastrada || produtosNaoCadastrados.length > 0;
+
+            return (
+              <div>
+                {temPendencias && (
+                  <div className="mb-4 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-yellow-900 mb-2">Pendências de Cadastro</h4>
+                        <div className="space-y-1 text-sm text-yellow-800">
+                          {empresaNaoCadastrada && (
+                            <p>• A empresa emitente não está cadastrada no sistema</p>
+                          )}
+                          {produtosNaoCadastrados.length > 0 && (
+                            <p>• {produtosNaoCadastrados.length} {produtosNaoCadastrados.length === 1 ? 'produto não está cadastrado' : 'produtos não estão cadastrados'}</p>
+                          )}
+                        </div>
+                        <p className="text-sm text-yellow-700 mt-2 font-medium">
+                          Cadastre todos os itens pendentes antes de confirmar o upload.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Confirmar Upload?</h3>
+                    <p className="text-sm text-gray-600">
+                      {temPendencias
+                        ? 'Cadastre empresa e produtos pendentes para prosseguir.'
+                        : 'Os dados estão corretos? Ao confirmar, o arquivo será processado e contabilizado no relatório.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={confirming || temPendencias}
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {confirming ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        Confirmando...
+                      </>
+                    ) : (
+                      <>
+                        Confirmar e Processar
+                        <ChevronRight className="w-5 h-5 ml-2" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Modal de Cadastro de Empresa */}
@@ -659,6 +769,78 @@ const UploadXML = () => {
                     disabled={savingCompany}
                   >
                     {savingCompany ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-5 h-5 mr-2" />
+                        Cadastrar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Cadastro de Produto */}
+        {showProductModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Cadastrar Produto</h3>
+                <button
+                  onClick={handleCloseProductModal}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome do Produto *
+                  </label>
+                  <input
+                    type="text"
+                    value={productFormData.product_name}
+                    onChange={(e) => setProductFormData(prev => ({ ...prev, product_name: e.target.value }))}
+                    className="input-field"
+                    placeholder="Nome/descrição do produto"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Código MAPA *
+                  </label>
+                  <input
+                    type="text"
+                    value={productFormData.mapa_code}
+                    onChange={(e) => setProductFormData(prev => ({ ...prev, mapa_code: e.target.value }))}
+                    className="input-field"
+                    placeholder="Ex: 001-B"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={handleCloseProductModal}
+                    className="btn-secondary flex-1"
+                    disabled={savingProduct}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveProduct}
+                    className="btn-primary flex-1"
+                    disabled={savingProduct}
+                  >
+                    {savingProduct ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin mr-2" />
                         Salvando...
