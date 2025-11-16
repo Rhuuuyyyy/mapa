@@ -32,7 +32,7 @@ const Reports = () => {
         if (year === currentYear && quarter > currentQuarter) {
           continue;
         }
-        const periodValue = `${year}Q${quarter}`;
+        const periodValue = `Q${quarter}-${year}`;
         const periodLabel = `${quarter}º Trimestre de ${year}`;
         periods.push({ value: periodValue, label: periodLabel });
       }
