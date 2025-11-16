@@ -2,6 +2,21 @@
 
 Sistema de Automação de Relatórios MAPA (Ministério da Agricultura, Pecuária e Abastecimento)
 
+## 🚀 Status do Deploy
+
+✅ **APLICAÇÃO EM PRODUÇÃO** - Azure App Service
+🌐 **URL**: https://mapa-app-clean-8270.azurewebsites.net
+📚 **API Docs**: https://mapa-app-clean-8270.azurewebsites.net/docs
+🔍 **Health**: https://mapa-app-clean-8270.azurewebsites.net/health
+
+**Deploy**: Automático via GitHub Actions → Branch `main`
+**Infraestrutura**: Azure App Service + PostgreSQL Flexible Server
+**Última atualização**: 2025-11-16
+
+📖 **Guias rápidos**:
+- [DEPLOY_SUCESSO.md](DEPLOY_SUCESSO.md) - Detalhes do deploy concluído
+- [CRIAR_ADMIN.md](CRIAR_ADMIN.md) - Como criar o primeiro usuário admin
+
 ## Sobre o Projeto
 
 MAPA SaaS é uma aplicação web desenvolvida para automatizar o processo de geração de relatórios trimestrais MAPA. O sistema permite que empresas:
