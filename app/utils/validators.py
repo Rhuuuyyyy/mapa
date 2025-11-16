@@ -3,9 +3,16 @@ Validadores de segurança para uploads de arquivos.
 Valida extensão, MIME type, magic numbers e tamanho.
 """
 
-import magic
 import re
 from pathlib import Path
+
+# Import lazy de magic para evitar falha se libmagic não estiver instalado
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    MAGIC_AVAILABLE = False
+    print("⚠️ python-magic not available, MIME type validation will be skipped")
 
 
 ALLOWED_EXTENSIONS = {"xml", "pdf"}
@@ -55,8 +62,12 @@ def validate_file_extension(filename: str) -> str:
 
 def validate_mime_type(content: bytes) -> str:
     """
-    Valida MIME type usando python-magic.
+    Valida MIME type usando python-magic (se disponível).
     """
+    if not MAGIC_AVAILABLE:
+        # Se magic não está disponível, pular validação MIME
+        return "application/octet-stream"
+
     try:
         mime = magic.from_buffer(content, mime=True)
 
@@ -158,7 +169,7 @@ def validate_file_security(filename: str, content: bytes, max_size: int) -> dict
     # 3. Validar tamanho
     validate_file_size(content, max_size)
 
-    # 4. Validar MIME type
+    # 4. Validar MIME type (se python-magic disponível)
     mime_type = validate_mime_type(content)
 
     # 5. Validar magic numbers
