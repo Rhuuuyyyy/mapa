@@ -1,7 +1,7 @@
 # 🚨 STATUS ATUAL - MAPA SaaS Azure Deploy
 
-**Data**: 2025-11-16 (continuação)
-**Status**: 🟡 Corrigindo erros de runtime iterativamente
+**Data**: 2025-11-16 (continuação - sessão restaurada)
+**Status**: 🟡 Corrigindo incompatibilidade de versões
 
 ---
 
@@ -17,55 +17,71 @@
 
 ---
 
-## 🔧 CORREÇÕES REALIZADAS (últimas horas)
+## 🔧 CORREÇÕES REALIZADAS (ordem cronológica)
 
 ### 1. ✅ ALLOWED_ORIGINS - Pydantic ValidationError
 - **Problema**: `List[str]` não aceitava string do Azure CLI
 - **Solução**: `Union[str, List[str]]` com `@field_validator`
 - **Arquivo**: `app/config.py`
-- **Commit**: 6bd3633
 
 ### 2. ✅ email-validator - ImportError
 - **Problema**: `EmailStr` requer `email-validator` package
 - **Solução**: Adicionado `email-validator==2.1.0` ao requirements.txt
-- **Commit**: 79c9ee9
 
 ### 3. ✅ Pydantic v2 - regex → pattern
 - **Problema**: Pydantic v2 removeu parâmetro `regex`
 - **Solução**: Alterado para `pattern` em `schemas.py`
 - **Arquivo**: `app/schemas.py:152`
-- **Commit**: 7350dcb
 
 ### 4. ✅ slowapi Rate Limiter - Missing Request Parameter
 - **Problema**: `@limiter.limit()` requer `request: Request` parameter
 - **Solução**: Adicionado `request: Request` ao login function
 - **Arquivo**: `app/routers/admin.py:26`
-- **Commit**: 667e248 (MAIS RECENTE)
+
+### 5. ✅ Pydantic v2 Validator Syntax
+- **Problema**: `@validator` é sintaxe antiga do Pydantic v1
+- **Solução**: Alterado para `@field_validator` com `@classmethod`
+- **Arquivo**: `app/schemas.py:154-156`
+
+### 6. ✅ FastAPI/Pydantic Version Incompatibility (ATUAL)
+- **Problema**: `AttributeError: 'FieldInfo' object has no attribute 'in_'`
+- **Causa raiz**: FastAPI 0.104.1 NÃO suporta Pydantic v2
+- **Solução**: Atualizado FastAPI 0.104.1 → 0.115.0, uvicorn 0.24.0 → 0.32.0
+- **Arquivo**: `requirements.txt:7-8`
+- **Commit**: ec42615 (MAIS RECENTE)
 
 ---
 
 ## 📊 ESTRATÉGIA DE CORREÇÃO
 
-Estamos usando uma abordagem iterativa:
+Estamos usando uma abordagem **iterativa profissional**:
+
 1. GitHub Action faz deploy
 2. App tenta iniciar
-3. Se houver erro, corrigimos o código
-4. Push automático aciona novo deploy
-5. Repetir até app iniciar com sucesso
+3. Azure mostra erro completo no log
+4. Analisamos o erro
+5. Corrigimos o código/dependências
+6. Push automático aciona novo deploy
+7. Repetir até app iniciar com sucesso
 
 **Vantagens**:
-- Cada erro fica documentado no commit history
-- Processo profissional e rastreável
-- Build Oryx funciona perfeitamente
-- Não precisa configuração manual no Azure
+- ✅ Cada erro fica documentado no commit history
+- ✅ Processo profissional e rastreável
+- ✅ Build Oryx funciona perfeitamente
+- ✅ Não precisa configuração manual no Azure
+- ✅ Identificação precisa de incompatibilidades de versão
 
 ---
 
 ## 🎯 STATUS ATUAL
 
-**Último deploy**: Commit 667e248 (fix slowapi)
+**Último deploy**: Commit ec42615 (fix FastAPI/Pydantic versions)
 **Aguardando**: GitHub Action completar (~3-5 minutos)
 **Próximo passo**: Testar endpoint `/health`
+
+**Versões atualizadas**:
+- FastAPI: 0.104.1 → **0.115.0** (suporte Pydantic v2)
+- uvicorn: 0.24.0 → **0.32.0** (compatível)
 
 ---
 
@@ -88,11 +104,12 @@ curl https://mapa-app-clean-8270.azurewebsites.net/health
 - [x] Variáveis de ambiente configuradas
 - [x] GitHub Actions via Deployment Center
 - [x] Build Oryx funcionando
-- [x] Dependências instaladas (email-validator, etc.)
+- [x] Dependências corretas (email-validator, etc.)
 - [x] Startup command correto
 - [x] ALLOWED_ORIGINS validator
-- [x] Pydantic v2 compatibility (pattern)
+- [x] Pydantic v2 compatibility (pattern, field_validator)
 - [x] slowapi rate limiter fixed
+- [x] FastAPI/Pydantic versions compatible
 - [ ] **App respondendo ao /health** ⏳ AGUARDANDO DEPLOY
 
 ---
@@ -109,20 +126,39 @@ curl https://mapa-app-clean-8270.azurewebsites.net/health
 
 1. ✅ Line endings (CRLF → LF) - Scripts shell
 2. ✅ ALLOWED_ORIGINS validator - Union[str, List[str]]
-3. ✅ email-validator dependency
-4. ✅ Pydantic v2 regex → pattern
-5. ✅ slowapi Request parameter
-6. ⏳ Aguardando próximo deploy...
+3. ✅ email-validator dependency - Added to requirements.txt
+4. ✅ Pydantic v2 regex → pattern - Field() parameter
+5. ✅ slowapi Request parameter - Added to login()
+6. ✅ Pydantic v2 @validator → @field_validator - Decorator syntax
+7. ✅ FastAPI/uvicorn version upgrade - Pydantic v2 compatibility
+8. ⏳ Aguardando próximo deploy...
 
 ---
 
-## 💡 PRÓXIMO PASSO
+## 💡 ANÁLISE DO ÚLTIMO ERRO
 
-1. **Aguardar** 3-5 minutos para GitHub Action completar
-2. **Testar** endpoint `/health`
-3. **Se funcionar**: ✅ App está rodando!
-4. **Se houver outro erro**: Corrigir e repetir
+**Erro**: `AttributeError: 'FieldInfo' object has no attribute 'in_'`
+
+**Localização**:
+```
+File "/tmp/8de24d70e82d924/antenv/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 470
+```
+
+**Causa raiz**:
+O Pydantic v2 mudou completamente a estrutura interna do `FieldInfo`. O FastAPI 0.104.1 foi lançado em novembro de 2023, ANTES da mudança para Pydantic v2. O atributo `in_` foi removido/renomeado no Pydantic v2.
+
+**Solução aplicada**:
+Atualizar FastAPI para versão >= 0.110.0 que tem suporte completo ao Pydantic v2. Escolhemos a 0.115.0 por ser estável e recente (outubro 2024).
 
 ---
 
-**Última atualização**: 2025-11-16 (deploy em andamento - commit 667e248)
+## 🎓 LIÇÕES APRENDIDAS
+
+1. **Dependências transitivase importam**: `pydantic-settings` puxa `pydantic>=2.0`, então TODAS as bibliotecas devem ser compatíveis com Pydantic v2
+2. **Versões de novembro 2023 do FastAPI**: NÃO são compatíveis com Pydantic v2
+3. **Azure logs são excelentes**: Mostram stack trace completo, permitindo identificar problemas de compatibilidade
+4. **Abordagem iterativa funciona**: Cada erro é identificado e corrigido sistematicamente
+
+---
+
+**Última atualização**: 2025-11-16 (deploy em andamento - commit ec42615)
