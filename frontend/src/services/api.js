@@ -194,17 +194,25 @@ export const xmlUploads = {
 // ============================================================================
 
 export const reports = {
+  getAll: async () => {
+    const response = await api.get('/user/reports');
+    return response.data;
+  },
+
   generate: async (period) => {
     const response = await api.post('/user/generate-report', { period });
     return response.data;
   },
 
   download: async (period) => {
-    // Nota: endpoint de download pode não existir, usar o generate por enquanto
-    const response = await api.post('/user/generate-report', { period }, {
+    const response = await api.get(`/user/reports/${period}/download`, {
       responseType: 'blob',
     });
     return response.data;
+  },
+
+  delete: async (reportId) => {
+    await api.delete(`/user/reports/${reportId}`);
   },
 };
 

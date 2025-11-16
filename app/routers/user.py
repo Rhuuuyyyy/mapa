@@ -635,16 +635,17 @@ async def generate_report(
     Gera relatório MAPA para o período especificado.
     Processa todos os XMLs do usuário e valida com catálogo.
     """
-    # Buscar XMLs processados
+    # Buscar XMLs processados para o período
     uploads = db.query(models.XMLUpload).filter(
         models.XMLUpload.user_id == current_user.id,
-        models.XMLUpload.status == "processed"
+        models.XMLUpload.status == "processed",
+        models.XMLUpload.period == request.period
     ).all()
 
     if not uploads:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nenhum XML processado encontrado"
+            detail=f"Nenhum XML processado encontrado para o período {request.period}"
         )
 
     # Processar com MAPA Processor
@@ -662,6 +663,15 @@ async def generate_report(
                 }
             )
 
+        # Salvar relatório no banco
+        report = models.Report(
+            user_id=current_user.id,
+            report_period=request.period,
+        )
+        db.add(report)
+        db.commit()
+        db.refresh(report)
+
         # Sucesso - retornar dados agregados
         return {
             "success": True,
@@ -671,8 +681,99 @@ async def generate_report(
             "rows": result["rows"]
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao processar relatório: {str(e)}"
         )
+
+
+@router.get("/reports")
+async def list_reports(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Lista todos os relatórios gerados pelo usuário"""
+    reports = db.query(models.Report).filter(
+        models.Report.user_id == current_user.id
+    ).order_by(models.Report.generated_at.desc()).all()
+
+    return [{
+        "id": r.id,
+        "report_period": r.report_period,
+        "generated_at": r.generated_at.isoformat(),
+        "file_path": r.file_path
+    } for r in reports]
+
+
+@router.delete("/reports/{report_id}")
+async def delete_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Deleta um relatório"""
+    report = db.query(models.Report).filter(
+        models.Report.id == report_id,
+        models.Report.user_id == current_user.id
+    ).first()
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Relatório não encontrado"
+        )
+
+    db.delete(report)
+    db.commit()
+
+    return {"message": "Relatório deletado com sucesso"}
+
+
+@router.get("/reports/{report_period}/download")
+async def download_report(
+    report_period: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Gera relatório para download (JSON formatado temporariamente, PDF futuro).
+    """
+    from fastapi.responses import JSONResponse
+
+    # Buscar XMLs processados para o período
+    uploads = db.query(models.XMLUpload).filter(
+        models.XMLUpload.user_id == current_user.id,
+        models.XMLUpload.status == "processed",
+        models.XMLUpload.period == report_period
+    ).all()
+
+    if not uploads:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Nenhum XML processado encontrado para o período {report_period}"
+        )
+
+    # Processar com MAPA Processor
+    processor = MAPAProcessor(db, current_user.id)
+    result = processor.process_uploads(uploads)
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
+
+    # Retornar JSON formatado (temporário - implementar PDF depois)
+    return JSONResponse(
+        content={
+            "period": report_period,
+            "total_nfes": result["total_nfes"],
+            "rows": result["rows"]
+        },
+        headers={
+            "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.json"
+        }
+    )
