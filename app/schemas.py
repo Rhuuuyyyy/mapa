@@ -3,7 +3,7 @@ Schemas Pydantic para validação de requests/responses.
 Separados por entidade para melhor organização.
 """
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -151,7 +151,8 @@ class ReportGenerateRequest(BaseModel):
     """Schema para solicitar geração de relatório"""
     period: str = Field(..., pattern=r"^Q[1-4]-\d{4}$")
 
-    @validator("period")
+    @field_validator("period")
+    @classmethod
     def validate_period(cls, v):
         """Valida formato do período (Q1-2025, Q2-2025, etc.)"""
         if not v:
