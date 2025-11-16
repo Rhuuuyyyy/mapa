@@ -9,6 +9,10 @@ set -e
 RESOURCE_GROUP="mapa-saas-clean"
 APP_SERVICE="mapa-app-clean-8270"
 
+# Export para que azure-deploy.sh use os valores corretos
+export RESOURCE_GROUP
+export APP_NAME="$APP_SERVICE"
+
 echo "============================================"
 echo "🔧 Fixing ALLOWED_ORIGINS Configuration"
 echo "============================================"
