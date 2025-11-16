@@ -149,7 +149,7 @@ class XMLUploadResponse(BaseModel):
 
 class ReportGenerateRequest(BaseModel):
     """Schema para solicitar geração de relatório"""
-    period: str = Field(..., regex=r"^Q[1-4]-\d{4}$")
+    period: str = Field(..., pattern=r"^Q[1-4]-\d{4}$")
 
     @validator("period")
     def validate_period(cls, v):
