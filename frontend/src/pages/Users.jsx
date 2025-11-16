@@ -26,6 +26,8 @@ const Users = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
+    full_name: '',
+    company_name: '',
     password: '',
     is_admin: false
   });
@@ -53,6 +55,8 @@ const Users = () => {
       setEditingUser(user);
       setFormData({
         email: user.email,
+        full_name: user.full_name || '',
+        company_name: user.company_name || '',
         password: '',
         is_admin: user.is_admin
       });
@@ -60,6 +64,8 @@ const Users = () => {
       setEditingUser(null);
       setFormData({
         email: '',
+        full_name: '',
+        company_name: '',
         password: '',
         is_admin: false
       });
@@ -72,7 +78,7 @@ const Users = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingUser(null);
-    setFormData({ email: '', password: '', is_admin: false });
+    setFormData({ email: '', full_name: '', company_name: '', password: '', is_admin: false });
     setErrors({});
     setShowPassword(false);
   };
@@ -98,6 +104,12 @@ const Users = () => {
       newErrors.email = 'Email inválido';
     }
 
+    if (!formData.full_name.trim()) {
+      newErrors.full_name = 'Nome completo é obrigatório';
+    } else if (formData.full_name.trim().length < 3) {
+      newErrors.full_name = 'Nome deve ter pelo menos 3 caracteres';
+    }
+
     if (!editingUser && !formData.password) {
       newErrors.password = 'Senha é obrigatória para novos usuários';
     } else if (formData.password && formData.password.length < 12) {
@@ -118,8 +130,14 @@ const Users = () => {
 
       const userData = {
         email: formData.email,
+        full_name: formData.full_name,
         is_admin: formData.is_admin
       };
+
+      // Incluir company_name se fornecido
+      if (formData.company_name && formData.company_name.trim()) {
+        userData.company_name = formData.company_name;
+      }
 
       // Incluir senha apenas se foi fornecida
       if (formData.password) {
@@ -258,7 +276,7 @@ const Users = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Email</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Usuário</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-900">Perfil</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-900">Criado em</th>
                   <th className="text-right py-3 px-4 font-semibold text-gray-900">Ações</th>
@@ -273,10 +291,13 @@ const Users = () => {
                           <Mail className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{user.email}</p>
-                          {user.id === currentUser?.id && (
-                            <span className="text-xs text-emerald-600 font-medium">(Você)</span>
-                          )}
+                          <p className="font-medium text-gray-900">
+                            {user.full_name}
+                            {user.id === currentUser?.id && (
+                              <span className="ml-2 text-xs text-emerald-600 font-medium">(Você)</span>
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-600">{user.email}</p>
                         </div>
                       </div>
                     </td>
@@ -361,6 +382,37 @@ const Users = () => {
                 {errors.email && (
                   <p className="mt-1 text-sm text-red-600">{errors.email}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  name="full_name"
+                  value={formData.full_name}
+                  onChange={handleInputChange}
+                  className={`input-field ${errors.full_name ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}`}
+                  placeholder="João da Silva"
+                />
+                {errors.full_name && (
+                  <p className="mt-1 text-sm text-red-600">{errors.full_name}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Empresa (opcional)
+                </label>
+                <input
+                  type="text"
+                  name="company_name"
+                  value={formData.company_name}
+                  onChange={handleInputChange}
+                  className="input-field"
+                  placeholder="Nome da empresa"
+                />
               </div>
 
               <div>
