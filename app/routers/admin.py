@@ -2,7 +2,7 @@
 Router de Admin - Autenticação e CRUD de Usuários.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
@@ -23,6 +23,7 @@ limiter = Limiter(key_func=get_remote_address)
 @router.post("/auth/login", response_model=schemas.TokenResponse)
 @limiter.limit("5/minute")  # Rate limit: 5 tentativas por minuto
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):

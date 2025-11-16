@@ -1,7 +1,7 @@
 # 🚨 STATUS ATUAL - MAPA SaaS Azure Deploy
 
-**Data**: 2025-11-16 05:05 UTC
-**Status**: 🟡 Deploy realizado, app não inicia completamente
+**Data**: 2025-11-16 (continuação)
+**Status**: 🟡 Corrigindo erros de runtime iterativamente
 
 ---
 
@@ -10,127 +10,69 @@
 1. ✅ GitHub Actions configurado e funcionando
 2. ✅ Build com Oryx completado com sucesso
 3. ✅ Dependências instaladas (`antenv/` criado)
-4. ✅ Deploy para Azure bem-sucedido
-5. ✅ Gunicorn inicia (porta 8000)
-6. ✅ Container não está crashando
-
-## ❌ PROBLEMA ATUAL
-
-- **HTTP 503** - Application Error
-- App inicia mas não responde corretamente
-- Logs de aplicação não aparecem no Fluxo de log
-
-## 🔍 EVIDÊNCIAS DOS LOGS
-
-```
-[2025-11-16 04:46:54 +0000] [2119] [INFO] Starting gunicorn 21.2.0
-[2025-11-16 04:46:54 +0000] [2119] [INFO] Listening at: http://0.0.0.0:8000 (2119)
-[2025-11-16 04:46:54 +0000] [2119] [INFO] Using worker: sync
-[2025-11-16 04:46:54 +0000] [2123] [INFO] Booting worker with pid: 2123
-```
-
-**Problema identificado**:
-- Worker type: `sync` (deveria ser `uvicorn.workers.UvicornWorker`)
-- Isso significa que o comando de inicialização NÃO está sendo aplicado
+4. ✅ Deploy para Azure bem-sucedido via GitHub Actions
+5. ✅ Gunicorn configurado corretamente (uvicorn.workers.UvicornWorker)
+6. ✅ Startup command correto aplicado
+7. ✅ Container não está crashando
 
 ---
 
-## 🎯 CAUSA RAIZ PROVÁVEL
+## 🔧 CORREÇÕES REALIZADAS (últimas horas)
 
-O **Comando de inicialização** no Azure não está sendo executado. O Oryx está gerando seu próprio script de startup automaticamente e ignorando nossa configuração.
+### 1. ✅ ALLOWED_ORIGINS - Pydantic ValidationError
+- **Problema**: `List[str]` não aceitava string do Azure CLI
+- **Solução**: `Union[str, List[str]]` com `@field_validator`
+- **Arquivo**: `app/config.py`
+- **Commit**: 6bd3633
 
-### Por que isso acontece?
+### 2. ✅ email-validator - ImportError
+- **Problema**: `EmailStr` requer `email-validator` package
+- **Solução**: Adicionado `email-validator==2.1.0` ao requirements.txt
+- **Commit**: 79c9ee9
 
-Quando o Oryx detecta um app Python, ele:
-1. Gera automaticamente `/opt/startup/startup.sh`
-2. Esse script sobrescreve o comando customizado
-3. O Oryx tenta adivinhar o comando (e erra)
+### 3. ✅ Pydantic v2 - regex → pattern
+- **Problema**: Pydantic v2 removeu parâmetro `regex`
+- **Solução**: Alterado para `pattern` em `schemas.py`
+- **Arquivo**: `app/schemas.py:152`
+- **Commit**: 7350dcb
+
+### 4. ✅ slowapi Rate Limiter - Missing Request Parameter
+- **Problema**: `@limiter.limit()` requer `request: Request` parameter
+- **Solução**: Adicionado `request: Request` ao login function
+- **Arquivo**: `app/routers/admin.py:26`
+- **Commit**: 667e248 (MAIS RECENTE)
 
 ---
 
-## 🔧 SOLUÇÕES POSSÍVEIS
+## 📊 ESTRATÉGIA DE CORREÇÃO
 
-### Solução 1: Criar arquivo de configuração Oryx ⭐⭐⭐⭐⭐
+Estamos usando uma abordagem iterativa:
+1. GitHub Action faz deploy
+2. App tenta iniciar
+3. Se houver erro, corrigimos o código
+4. Push automático aciona novo deploy
+5. Repetir até app iniciar com sucesso
 
-Criar arquivo que diz ao Oryx como iniciar o app:
+**Vantagens**:
+- Cada erro fica documentado no commit history
+- Processo profissional e rastreável
+- Build Oryx funciona perfeitamente
+- Não precisa configuração manual no Azure
 
-**Arquivo**: `oryx.config.json` (na raiz do projeto)
+---
 
-```json
-{
-  "run": {
-    "appType": "python",
-    "startupCommand": "gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 120 --access-logfile - --error-logfile - --log-level info"
-  }
-}
-```
+## 🎯 STATUS ATUAL
 
-### Solução 2: Usar variável de ambiente WEBSITE_STARTUP_COMMAND ⭐⭐⭐⭐
+**Último deploy**: Commit 667e248 (fix slowapi)
+**Aguardando**: GitHub Action completar (~3-5 minutos)
+**Próximo passo**: Testar endpoint `/health`
 
-Configurar no Azure Portal:
-- **Configuração** → **Configurações do aplicativo**
-- Adicionar: `WEBSITE_STARTUP_COMMAND`
-- Valor: `gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000`
+---
 
-### Solução 3: Modificar o workflow GitHub Actions ⭐⭐⭐⭐⭐
-
-Editar `.github/workflows/main_mapa-app-clean-8270.yml` para incluir:
-
-```yaml
-- name: Configure startup command
-  run: |
-    az webapp config set \
-      --resource-group mapa-saas-clean \
-      --name mapa-app-clean-8270 \
-      --startup-file "gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000"
-```
-
-### Solução 4: Criar startup.sh na raiz do projeto ⭐⭐⭐
-
-**Arquivo**: `startup.sh` (raiz do projeto, não em scripts/)
+## 🧪 COMO TESTAR
 
 ```bash
-#!/bin/bash
-set -e
-source antenv/bin/activate
-cd /home/site/wwwroot
-exec gunicorn app.main:app \
-    --workers 2 \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --bind 0.0.0.0:8000 \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile - \
-    --log-level info
-```
-
----
-
-## 📋 PLANO DE AÇÃO RECOMENDADO
-
-### Opção A: Mais Rápida (5 minutos) ⭐⭐⭐⭐⭐
-
-1. **Criar variável de ambiente no Azure**:
-   - Portal → Configurações do aplicativo
-   - Nome: `WEBSITE_STARTUP_COMMAND`
-   - Valor: `gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000`
-   - Salvar e Reiniciar
-
-2. **Aguardar 1 minuto e testar**
-
-### Opção B: Mais Profissional (10 minutos) ⭐⭐⭐⭐⭐
-
-1. **Criar `oryx.config.json` no repositório**
-2. **Commit e push**
-3. **GitHub Action roda automaticamente**
-4. **App inicia corretamente**
-
----
-
-## 🧪 COMO TESTAR SE FUNCIONOU
-
-```bash
-# Deve retornar JSON, não HTML de erro
+# Aguardar ~5 minutos após push, então:
 curl https://mapa-app-clean-8270.azurewebsites.net/health
 
 # Resposta esperada:
@@ -139,62 +81,48 @@ curl https://mapa-app-clean-8270.azurewebsites.net/health
 
 ---
 
-## 📊 CHECKLIST DE CONFIGURAÇÕES AZURE
+## 📊 CHECKLIST DE CONFIGURAÇÕES
 
 - [x] App Service criado
-- [x] PostgreSQL configurado
-- [x] Variáveis de ambiente configuradas (DATABASE_URL, SECRET_KEY, etc.)
-- [x] GitHub Actions funcionando
-- [x] Deploy bem-sucedido
-- [x] Build Oryx completado
-- [x] Dependências instaladas
-- [ ] **Startup command correto aplicado** ❌ PROBLEMA ATUAL
-- [ ] App respondendo ao /health ❌ PROBLEMA ATUAL
+- [x] PostgreSQL Flexible Server configurado
+- [x] Variáveis de ambiente configuradas
+- [x] GitHub Actions via Deployment Center
+- [x] Build Oryx funcionando
+- [x] Dependências instaladas (email-validator, etc.)
+- [x] Startup command correto
+- [x] ALLOWED_ORIGINS validator
+- [x] Pydantic v2 compatibility (pattern)
+- [x] slowapi rate limiter fixed
+- [ ] **App respondendo ao /health** ⏳ AGUARDANDO DEPLOY
 
 ---
 
-## 🔍 DIAGNÓSTICOS EXECUTADOS
+## 🔍 MONITORAMENTO
 
-1. ✅ Código Python validado (imports funcionam localmente)
-2. ✅ requirements.txt completo
-3. ✅ runtime.txt correto (python-3.11)
-4. ✅ .deployment configurado
-5. ✅ GitHub Actions executando
-6. ✅ Build Oryx bem-sucedido
-7. ✅ Gunicorn iniciando
-8. ❌ Worker type incorreto (sync em vez de uvicorn)
-9. ❌ Comando de inicialização não aplicado
+**GitHub Actions**: https://github.com/Rhuuuyyyy/mapa/actions
+**Azure Portal**: App Service → Deployment Center → Logs
+**Branch**: `claude/mapa-saas-azure-rebuild-0124CvJbp39G8o2AG9tqZUTa`
 
 ---
 
-## 💡 PRÓXIMO PASSO IMEDIATO
+## 📝 HISTÓRICO COMPLETO DE FIXES
 
-**RECOMENDAÇÃO**: Usar **Opção A** (variável de ambiente) por ser mais rápida.
-
-Vá no Azure Portal agora:
-1. App Service → Configuração → Configurações do aplicativo
-2. **+ Nova configuração de aplicativo**
-3. Nome: `WEBSITE_STARTUP_COMMAND`
-4. Valor: `gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 120`
-5. OK → Salvar → Reiniciar
-
-Aguarde 1 minuto e teste o `/health`.
+1. ✅ Line endings (CRLF → LF) - Scripts shell
+2. ✅ ALLOWED_ORIGINS validator - Union[str, List[str]]
+3. ✅ email-validator dependency
+4. ✅ Pydantic v2 regex → pattern
+5. ✅ slowapi Request parameter
+6. ⏳ Aguardando próximo deploy...
 
 ---
 
-**Se não funcionar**, vamos para **Opção B** (criar oryx.config.json).
+## 💡 PRÓXIMO PASSO
+
+1. **Aguardar** 3-5 minutos para GitHub Action completar
+2. **Testar** endpoint `/health`
+3. **Se funcionar**: ✅ App está rodando!
+4. **Se houver outro erro**: Corrigir e repetir
 
 ---
 
-## 📝 HISTÓRICO DE TENTATIVAS
-
-1. ❌ Deploy via `az webapp deploy --type zip` - Não acionou Oryx
-2. ❌ Configurar `SCM_DO_BUILD_DURING_DEPLOYMENT` - Não funciona com ZIP deploy
-3. ✅ GitHub Actions via Deployment Center - Funcionou!
-4. ✅ Build Oryx completado - Sucesso!
-5. ❌ Startup command via "Configurações gerais" - Ignorado pelo Oryx
-6. 🟡 **ATUAL**: Configurar via variável de ambiente ou oryx.config.json
-
----
-
-**Última atualização**: 2025-11-16 05:05 UTC
+**Última atualização**: 2025-11-16 (deploy em andamento - commit 667e248)
