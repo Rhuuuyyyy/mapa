@@ -150,6 +150,23 @@ export const products = {
 // ============================================================================
 
 export const xmlUploads = {
+  uploadPreview: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post('/user/upload-preview', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  uploadConfirm: async (confirmData) => {
+    const response = await api.post('/user/upload-confirm', confirmData);
+    return response.data;
+  },
+
   upload: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
