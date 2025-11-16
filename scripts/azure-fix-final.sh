@@ -88,7 +88,11 @@ echo "📦 [3/6] Fazendo deploy do código atualizado..."
 echo ""
 
 # Criar ZIP limpo
-cd /home/user/mapa
+# Obter diretório raiz do projeto (pai de scripts/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_DIR"
+
 zip -r deploy.zip . \
     -x "*.git*" \
     -x "*__pycache__*" \
