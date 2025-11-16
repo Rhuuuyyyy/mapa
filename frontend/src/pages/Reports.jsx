@@ -61,7 +61,25 @@ const Reports = () => {
         data: response
       });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erro ao gerar relatório');
+      console.error('Erro ao gerar relatório:', err);
+
+      // Extrair mensagem de erro do backend
+      let errorMessage = 'Erro ao gerar relatório';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          // Erros de validação do Pydantic
+          errorMessage = detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (typeof detail === 'object') {
+          errorMessage = JSON.stringify(detail);
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setGenerating(false);
     }
@@ -94,7 +112,25 @@ const Reports = () => {
         message: 'Download realizado com sucesso!'
       });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erro ao baixar relatório');
+      console.error('Erro ao baixar relatório:', err);
+
+      // Extrair mensagem de erro do backend
+      let errorMessage = 'Erro ao baixar relatório';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          // Erros de validação do Pydantic
+          errorMessage = detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (typeof detail === 'object') {
+          errorMessage = JSON.stringify(detail);
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setDownloading(false);
     }
