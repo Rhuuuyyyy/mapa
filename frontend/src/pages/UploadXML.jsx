@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Upload,
   FileText,
@@ -10,9 +10,13 @@ import {
   Package,
   Calendar,
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Edit2,
+  Trash2,
+  Plus,
+  X
 } from 'lucide-react';
-import { xmlUploads as xmlUploadsAPI } from '../services/api';
+import { xmlUploads as xmlUploadsAPI, companies as companiesAPI } from '../services/api';
 
 const UploadXML = () => {
   const [step, setStep] = useState('upload'); // 'upload', 'preview', 'success'
@@ -21,6 +25,30 @@ const UploadXML = () => {
   const [previewData, setPreviewData] = useState(null);
   const [error, setError] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  const [uploadHistory, setUploadHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [companyFormData, setCompanyFormData] = useState({
+    company_name: '',
+    mapa_registration: ''
+  });
+  const [savingCompany, setSavingCompany] = useState(false);
+
+  useEffect(() => {
+    loadUploadHistory();
+  }, []);
+
+  const loadUploadHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const history = await xmlUploadsAPI.getHistory();
+      setUploadHistory(history);
+    } catch (err) {
+      console.error('Erro ao carregar histórico:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -59,11 +87,54 @@ const UploadXML = () => {
     try {
       const preview = await xmlUploadsAPI.uploadPreview(file);
       setPreviewData(preview);
+
+      // Pre-preencher formulário de empresa com dados do XML se não encontrada
+      if (!preview.empresa_encontrada && preview.nfe_data?.emitente) {
+        setCompanyFormData({
+          company_name: preview.nfe_data.emitente.razao_social || '',
+          mapa_registration: ''
+        });
+      }
+
       setStep('preview');
     } catch (err) {
       setError(err.response?.data?.detail || 'Erro ao processar arquivo XML');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleOpenCompanyModal = () => {
+    setShowCompanyModal(true);
+  };
+
+  const handleCloseCompanyModal = () => {
+    setShowCompanyModal(false);
+    setCompanyFormData({ company_name: '', mapa_registration: '' });
+  };
+
+  const handleSaveCompany = async () => {
+    if (!companyFormData.company_name.trim() || !companyFormData.mapa_registration.trim()) {
+      alert('Preencha todos os campos');
+      return;
+    }
+
+    try {
+      setSavingCompany(true);
+      await companiesAPI.create(companyFormData);
+
+      // Atualizar preview com empresa encontrada
+      setPreviewData(prev => ({
+        ...prev,
+        empresa_encontrada: companyFormData.company_name
+      }));
+
+      handleCloseCompanyModal();
+      alert('Empresa cadastrada com sucesso!');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Erro ao cadastrar empresa');
+    } finally {
+      setSavingCompany(false);
     }
   };
 
@@ -78,10 +149,24 @@ const UploadXML = () => {
         nfe_data: previewData.nfe_data
       });
       setStep('success');
+      loadUploadHistory(); // Recarregar histórico
     } catch (err) {
       setError(err.response?.data?.detail || 'Erro ao confirmar upload');
     } finally {
       setConfirming(false);
+    }
+  };
+
+  const handleDeleteUpload = async (uploadId) => {
+    if (!window.confirm('Tem certeza que deseja excluir este upload?')) {
+      return;
+    }
+
+    try {
+      await xmlUploadsAPI.delete(uploadId);
+      loadUploadHistory();
+    } catch (err) {
+      alert('Erro ao excluir upload');
     }
   };
 
@@ -105,8 +190,28 @@ const UploadXML = () => {
     return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
   };
 
+  const groupHistoryByQuarter = () => {
+    const grouped = {};
+
+    uploadHistory.forEach(upload => {
+      const date = new Date(upload.upload_date);
+      const year = date.getFullYear();
+      const quarter = Math.ceil((date.getMonth() + 1) / 3);
+      const key = `${year}Q${quarter}`;
+
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(upload);
+    });
+
+    return Object.entries(grouped).sort((a, b) => b[0].localeCompare(a[0]));
+  };
+
   // Etapa 1: Upload
   if (step === 'upload') {
+    const groupedHistory = groupHistoryByQuarter();
+
     return (
       <div className="space-y-6">
         <div>
@@ -159,7 +264,7 @@ const UploadXML = () => {
                 <p className="text-sm text-gray-600 mb-4">
                   ou clique no botão abaixo para selecionar
                 </p>
-                <label className="btn-primary cursor-pointer">
+                <label className="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg cursor-pointer transition-colors">
                   <FileText className="w-5 h-5 mr-2" />
                   Selecionar Arquivo XML
                   <input
@@ -183,8 +288,92 @@ const UploadXML = () => {
             <p>• O arquivo será processado e você poderá revisar os dados antes de confirmar</p>
             <p>• Serão extraídos: informações da nota, emitente, destinatário e produtos</p>
             <p>• Você poderá verificar qual período trimestral será contabilizado</p>
-            <p>• É possível editar os dados antes da confirmação final</p>
+            <p>• É possível cadastrar empresa caso não esteja no sistema</p>
           </div>
+        </div>
+
+        {/* Histórico de Uploads */}
+        <div className="card">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Histórico de Uploads</h2>
+
+          {loadingHistory ? (
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">Carregando histórico...</p>
+            </div>
+          ) : groupedHistory.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>Nenhum upload realizado ainda</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {groupedHistory.map(([quarter, uploads]) => (
+                <div key={quarter}>
+                  <div className="flex items-center space-x-3 mb-3">
+                    <Calendar className="w-5 h-5 text-emerald-600" />
+                    <h3 className="font-semibold text-gray-900">
+                      {quarter.replace('Q', 'º Trimestre de ')}
+                    </h3>
+                    <span className="text-sm text-gray-500">
+                      ({uploads.length} {uploads.length === 1 ? 'arquivo' : 'arquivos'})
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {uploads.map(upload => (
+                      <div
+                        key={upload.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3 flex-1">
+                          <FileText className={`w-5 h-5 flex-shrink-0 ${
+                            upload.status === 'processed' ? 'text-emerald-600' :
+                            upload.status === 'error' ? 'text-red-600' :
+                            'text-gray-400'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
+                              {upload.filename}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {formatDate(upload.upload_date)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {upload.status === 'processed' && (
+                            <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                              Processado
+                            </span>
+                          )}
+                          {upload.status === 'error' && (
+                            <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">
+                              Erro
+                            </span>
+                          )}
+                          {upload.status === 'pending' && (
+                            <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+                              Pendente
+                            </span>
+                          )}
+
+                          <button
+                            onClick={() => handleDeleteUpload(upload.id)}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -238,19 +427,26 @@ const UploadXML = () => {
           </div>
 
           {/* Empresa */}
-          <div className="card bg-blue-50 border-blue-200">
+          <div className={`card ${previewData.empresa_encontrada ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'}`}>
             <div className="flex items-center space-x-3 mb-3">
-              <Building2 className="w-6 h-6 text-blue-600" />
-              <h3 className="font-semibold text-blue-900">Empresa</h3>
+              <Building2 className={`w-6 h-6 ${previewData.empresa_encontrada ? 'text-blue-600' : 'text-yellow-600'}`} />
+              <h3 className={`font-semibold ${previewData.empresa_encontrada ? 'text-blue-900' : 'text-yellow-900'}`}>Empresa</h3>
             </div>
-            <p className="text-lg font-bold text-blue-900">
+            <p className={`text-lg font-bold ${previewData.empresa_encontrada ? 'text-blue-900' : 'text-yellow-900'}`}>
               {previewData.empresa_encontrada || 'Não encontrada'}
             </p>
-            <p className="text-sm text-blue-700 mt-1">
-              {previewData.empresa_encontrada
-                ? 'Empresa cadastrada no sistema'
-                : 'Você pode precisar cadastrar esta empresa'}
-            </p>
+            {previewData.empresa_encontrada ? (
+              <p className="text-sm text-blue-700 mt-1">
+                Empresa cadastrada no sistema
+              </p>
+            ) : (
+              <button
+                onClick={handleOpenCompanyModal}
+                className="mt-2 text-sm font-medium text-yellow-900 underline hover:text-yellow-700"
+              >
+                Cadastrar empresa agora
+              </button>
+            )}
           </div>
 
           {/* Produtos */}
@@ -407,6 +603,78 @@ const UploadXML = () => {
             </button>
           </div>
         </div>
+
+        {/* Modal de Cadastro de Empresa */}
+        {showCompanyModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Cadastrar Empresa</h3>
+                <button
+                  onClick={handleCloseCompanyModal}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome da Empresa *
+                  </label>
+                  <input
+                    type="text"
+                    value={companyFormData.company_name}
+                    onChange={(e) => setCompanyFormData(prev => ({ ...prev, company_name: e.target.value }))}
+                    className="input-field"
+                    placeholder="Razão social da empresa"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Registro MAPA *
+                  </label>
+                  <input
+                    type="text"
+                    value={companyFormData.mapa_registration}
+                    onChange={(e) => setCompanyFormData(prev => ({ ...prev, mapa_registration: e.target.value }))}
+                    className="input-field"
+                    placeholder="Ex: PR-12345-A"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={handleCloseCompanyModal}
+                    className="btn-secondary flex-1"
+                    disabled={savingCompany}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveCompany}
+                    className="btn-primary flex-1"
+                    disabled={savingCompany}
+                  >
+                    {savingCompany ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-5 h-5 mr-2" />
+                        Cadastrar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

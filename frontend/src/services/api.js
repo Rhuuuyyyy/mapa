@@ -183,6 +183,10 @@ export const xmlUploads = {
     const response = await api.get('/user/uploads');
     return response.data;
   },
+
+  delete: async (uploadId) => {
+    await api.delete(`/user/uploads/${uploadId}`);
+  },
 };
 
 // ============================================================================
