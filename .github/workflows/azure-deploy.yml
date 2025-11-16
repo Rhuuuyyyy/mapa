@@ -1,0 +1,63 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:  # Permite executar manualmente
+
+env:
+  AZURE_WEBAPP_NAME: mapa-app-clean-8270
+  AZURE_WEBAPP_PACKAGE_PATH: '.'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Create deployment package
+        run: |
+          echo "Creating deployment package..."
+          zip -r deploy.zip . \
+            -x "*.git*" \
+            -x "*__pycache__*" \
+            -x "*.pyc" \
+            -x "*venv/*" \
+            -x "*antenv/*" \
+            -x "*.env" \
+            -x "*uploads/*" \
+            -x "*EXEMPLO-DO-PROJETO/*" \
+            -x "deploy.zip" \
+            -x "*.md" \
+            -q
+          echo "✓ Package created: $(du -h deploy.zip | cut -f1)"
+
+      - name: 🚀 Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: deploy.zip
+
+      - name: ✅ Deployment complete
+        run: |
+          echo "============================================"
+          echo "✅ Deployment completed successfully!"
+          echo "============================================"
+          echo ""
+          echo "App URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "Health: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          echo ""
+          echo "⏳ First startup may take 3-5 minutes"
+          echo "   (Oryx is installing dependencies...)"
+          echo ""
