@@ -451,6 +451,13 @@ const UploadXML = () => {
                           )}
 
                           <button
+                            onClick={() => alert(`Visualização/edição de XML em desenvolvimento.\n\nArquivo: ${upload.filename}\nStatus: ${upload.status}\nPer\u00edodo: ${upload.period || 'N/A'}`)}
+                            className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Visualizar"
+                          >
+                            <Edit2 className="w-4 h-4 text-emerald-600" />
+                          </button>
+                          <button
                             onClick={() => handleDeleteUpload(upload.id)}
                             className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                             title="Excluir"
