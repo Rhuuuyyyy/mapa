@@ -2,45 +2,21 @@
 
 Guia rápido para rodar o MAPA SaaS no Windows.
 
-## 🎯 Escolha seu modo de desenvolvimento
+## ⭐ Modo Recomendado: Frontend Local + Azure Backend
 
-### ⭐ Modo 1: Frontend Only (RECOMENDADO - Dados Reais do Azure)
 **O que roda:**
 - ✅ Frontend local (React) em http://localhost:3000
 - ✅ Backend no Azure (dados reais)
 - ✅ Banco PostgreSQL no Azure (dados reais)
 
-**Quando usar:** Ver interface local mas trabalhar com dados reais do Azure
-
-**Como usar:**
-```powershell
-# Primeira vez
+**Comandos (iguais ao Linux):**
+```cmd
 cd frontend
-npm install
-
-# Toda vez que quiser rodar
-start-frontend-only.bat
+npm install        # Primeira vez
+npm run dev        # Toda vez que quiser rodar
 ```
 
----
-
-### Modo 2: Tudo Local (Desenvolvimento Completo)
-**O que roda:**
-- ✅ Frontend local (React) em http://localhost:3000
-- ✅ Backend local (FastAPI) em http://localhost:8000
-- ✅ Banco SQLite/PostgreSQL local
-
-**Quando usar:** Desenvolver sem internet, testar mudanças no backend
-
-**Como usar:**
-```powershell
-# Primeira vez
-setup-windows.bat
-
-# Toda vez que quiser rodar
-start-backend.bat    # Terminal 1
-start-frontend.bat   # Terminal 2
-```
+Pronto! É exatamente igual ao Linux.
 
 ---
 
