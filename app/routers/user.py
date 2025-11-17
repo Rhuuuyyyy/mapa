@@ -636,6 +636,163 @@ async def delete_upload(
     return None
 
 
+@router.get("/uploads/{upload_id}")
+async def get_upload_details(
+    upload_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Retorna detalhes completos de um upload para edição.
+    Inclui dados da NF-e e produtos parseados.
+    """
+    upload = db.query(models.XMLUpload).filter(
+        models.XMLUpload.id == upload_id,
+        models.XMLUpload.user_id == current_user.id
+    ).first()
+
+    if not upload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload não encontrado"
+        )
+
+    # Ler e parsear o XML novamente
+    try:
+        from app.utils.xml_parser import parse_nfe_xml
+
+        if not os.path.exists(upload.file_path):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Arquivo XML não encontrado no servidor"
+            )
+
+        # Parsear XML
+        nfe_data = parse_nfe_xml(upload.file_path)
+
+        # Buscar produtos cadastrados e fazer matching
+        products = db.query(models.Product).filter(
+            models.Product.user_id == current_user.id
+        ).all()
+
+        # Adicionar informação de matching aos produtos do XML
+        produtos_com_match = []
+        for produto in nfe_data.get('produtos', []):
+            produto_dict = produto.copy()
+
+            # Tentar encontrar match pelo código
+            matched_product = None
+            for prod in products:
+                if prod.product_code == produto.get('codigo'):
+                    matched_product = prod
+                    break
+
+            if matched_product:
+                produto_dict['matched_mapa_registration'] = matched_product.mapa_registration
+                produto_dict['matched_product_reference'] = matched_product.product_reference
+            else:
+                produto_dict['matched_mapa_registration'] = None
+                produto_dict['matched_product_reference'] = None
+
+            produtos_com_match.append(produto_dict)
+
+        nfe_data['produtos'] = produtos_com_match
+
+        return {
+            "id": upload.id,
+            "filename": upload.filename,
+            "upload_date": upload.upload_date,
+            "status": upload.status,
+            "period": upload.period,
+            "nfe_data": nfe_data
+        }
+
+    except Exception as e:
+        import traceback
+        print(f"Erro ao buscar detalhes do upload: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao processar XML: {str(e)}"
+        )
+
+
+@router.put("/uploads/{upload_id}")
+async def update_upload(
+    upload_id: int,
+    edit_data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Atualiza um upload com dados editados.
+    Permite editar produtos e vínculos com registros MAPA.
+    """
+    upload = db.query(models.XMLUpload).filter(
+        models.XMLUpload.id == upload_id,
+        models.XMLUpload.user_id == current_user.id
+    ).first()
+
+    if not upload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload não encontrado"
+        )
+
+    try:
+        # Atualizar produtos editados
+        produtos_editados = edit_data.get('produtos', [])
+
+        # Para cada produto editado, verificar se precisamos criar/atualizar o produto no cadastro
+        for produto in produtos_editados:
+            codigo = produto.get('codigo')
+            mapa_registration = produto.get('mapa_registration')
+            product_reference = produto.get('product_reference')
+
+            if not mapa_registration:
+                continue  # Skip produtos sem MAPA registration
+
+            # Verificar se já existe produto cadastrado com esse código
+            existing_product = db.query(models.Product).filter(
+                models.Product.user_id == current_user.id,
+                models.Product.product_code == codigo
+            ).first()
+
+            if existing_product:
+                # Atualizar produto existente
+                existing_product.mapa_registration = mapa_registration
+                if product_reference:
+                    existing_product.product_reference = product_reference
+            else:
+                # Criar novo produto
+                new_product = models.Product(
+                    user_id=current_user.id,
+                    product_code=codigo,
+                    product_name=produto.get('descricao', ''),
+                    mapa_registration=mapa_registration,
+                    product_reference=product_reference
+                )
+                db.add(new_product)
+
+        db.commit()
+
+        return {
+            "success": True,
+            "message": "Upload atualizado com sucesso",
+            "upload_id": upload_id
+        }
+
+    except Exception as e:
+        db.rollback()
+        import traceback
+        print(f"Erro ao atualizar upload: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao atualizar upload: {str(e)}"
+        )
+
+
 # ============================================================================
 # REPORT GENERATION
 # ============================================================================
