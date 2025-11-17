@@ -363,7 +363,7 @@ const Reports = () => {
                             {result.data.rows.map((row, index) => (
                               <tr key={index} className="hover:bg-gray-50">
                                 <td className="px-4 py-3 text-gray-900">{row.mapa_registration}</td>
-                                <td className="px-4 py-3 text-gray-700">{row.product_reference || '-'}</td>
+                                <td className="px-4 py-3 text-gray-700">{row.product_name || '-'}</td>
                                 <td className="px-4 py-3 text-gray-700">{row.unit}</td>
                                 <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.quantity_import}</td>
                                 <td className="px-4 py-3 text-right text-gray-900 font-medium">{row.quantity_domestic}</td>

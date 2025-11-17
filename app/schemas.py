@@ -181,6 +181,7 @@ class ReportGenerateRequest(BaseModel):
 class ReportRow(BaseModel):
     """Schema para uma linha do relatório"""
     mapa_registration: str
+    product_name: str
     product_reference: Optional[str]
     unit: str = "Tonelada"
     quantity_import: str
