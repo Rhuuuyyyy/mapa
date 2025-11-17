@@ -742,38 +742,50 @@ async def download_report(
     Gera relatório para download (JSON formatado temporariamente, PDF futuro).
     """
     from fastapi.responses import JSONResponse
+    import traceback
 
-    # Buscar XMLs processados para o período
-    uploads = db.query(models.XMLUpload).filter(
-        models.XMLUpload.user_id == current_user.id,
-        models.XMLUpload.status == "processed",
-        models.XMLUpload.period == report_period
-    ).all()
+    try:
+        # Buscar XMLs processados para o período
+        uploads = db.query(models.XMLUpload).filter(
+            models.XMLUpload.user_id == current_user.id,
+            models.XMLUpload.status == "processed",
+            models.XMLUpload.period == report_period
+        ).all()
 
-    if not uploads:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Nenhum XML processado encontrado para o período {report_period}"
+        if not uploads:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Nenhum XML processado encontrado para o período {report_period}"
+            )
+
+        # Processar com MAPA Processor
+        processor = MAPAProcessor(db, current_user.id)
+        result = processor.process_uploads(uploads)
+
+        if not result["success"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.get("error", "Erro ao processar relatório")
+            )
+
+        # Retornar JSON formatado (temporário - implementar PDF depois)
+        return JSONResponse(
+            content={
+                "period": report_period,
+                "total_nfes": result["total_nfes"],
+                "rows": result["rows"]
+            },
+            headers={
+                "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.json"
+            }
         )
-
-    # Processar com MAPA Processor
-    processor = MAPAProcessor(db, current_user.id)
-    result = processor.process_uploads(uploads)
-
-    if not result["success"]:
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log do erro completo
+        print(f"Erro ao gerar download do relatório: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result["error"]
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno ao gerar download: {str(e)}"
         )
-
-    # Retornar JSON formatado (temporário - implementar PDF depois)
-    return JSONResponse(
-        content={
-            "period": report_period,
-            "total_nfes": result["total_nfes"],
-            "rows": result["rows"]
-        },
-        headers={
-            "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.json"
-        }
-    )
