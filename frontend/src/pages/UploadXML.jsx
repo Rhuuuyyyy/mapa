@@ -218,6 +218,16 @@ const UploadXML = () => {
         };
       });
 
+      // Atualizar o registro MAPA no campo de revisão
+      setEditedProducts(prev => ({
+        ...prev,
+        [selectedProductIndex]: {
+          ...(prev[selectedProductIndex] || {}),
+          registro_mapa: productFormData.mapa_registration,
+          descricao: productFormData.product_name
+        }
+      }));
+
       handleCloseProductModal();
       alert('Produto cadastrado com sucesso!');
     } catch (err) {
