@@ -1039,6 +1039,133 @@ const UploadXML = () => {
             </div>
           </div>
         )}
+
+        {/* Modal de Edição de XML */}
+        {showEditModal && editingUpload && editData && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Editar XML</h2>
+                    <p className="text-sm text-gray-600 mt-1">{editingUpload.filename}</p>
+                  </div>
+                  <button
+                    onClick={handleCloseEditModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Vincule produtos ao Registro MAPA</p>
+                        <p>Edite o campo "Registro MAPA" para cada produto. Depois de salvar, os produtos serão atualizados no seu cadastro.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Produtos */}
+                  <div className="space-y-3">
+                    {editData.produtos.map((produto, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 hover:border-emerald-300 transition-colors"
+                      >
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {/* Informações do XML (read-only) */}
+                          <div className="space-y-2">
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 uppercase">Código</label>
+                              <p className="text-sm font-mono text-gray-900">{produto.codigo}</p>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 uppercase">Descrição</label>
+                              <p className="text-sm text-gray-900">{produto.descricao}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-medium text-gray-500 uppercase">Quantidade</label>
+                                <p className="text-sm text-gray-900">{produto.quantidade}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-500 uppercase">Unidade</label>
+                                <p className="text-sm text-gray-900">{produto.unidade}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Campos editáveis */}
+                          <div className="space-y-3 bg-emerald-50 p-3 rounded-lg">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Registro MAPA *
+                              </label>
+                              <input
+                                type="text"
+                                value={produto.mapa_registration}
+                                onChange={(e) => handleEditProductField(index, 'mapa_registration', e.target.value)}
+                                className="input w-full"
+                                placeholder="Ex: SP-12345/2024"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Referência do Produto (opcional)
+                              </label>
+                              <input
+                                type="text"
+                                value={produto.product_reference || ''}
+                                onChange={(e) => handleEditProductField(index, 'product_reference', e.target.value)}
+                                className="input w-full"
+                                placeholder="Ex: REF-001"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-200 bg-gray-50">
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={handleCloseEditModal}
+                    className="btn-secondary"
+                    disabled={savingEdit}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="btn-primary"
+                    disabled={savingEdit}
+                  >
+                    {savingEdit ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Salvando...
+                      </>
+                    ) : (
+                      'Salvar Alterações'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
