@@ -815,7 +815,7 @@ const UploadXML = () => {
                       {/* Nome do Produto */}
                       <div className="md:col-span-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          Nome do Produto
+                          Nome do Produto *
                         </label>
                         <div className="relative">
                           <input
@@ -829,44 +829,10 @@ const UploadXML = () => {
                         </div>
                       </div>
 
-                      {/* Código */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          Código do Produto
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={produtoData.codigo || ''}
-                            onChange={(e) => handleEditProductField(index, 'codigo', e.target.value)}
-                            className="input-field text-sm pr-10"
-                            placeholder="Código"
-                          />
-                          <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        </div>
-                      </div>
-
-                      {/* Registro MAPA */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          Registro MAPA
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={produtoData.registro_mapa || ''}
-                            onChange={(e) => handleEditProductField(index, 'registro_mapa', e.target.value)}
-                            className="input-field text-sm pr-10"
-                            placeholder="Ex: PR-12345-6.000001"
-                          />
-                          <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        </div>
-                      </div>
-
                       {/* Quantidade */}
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          Quantidade
+                          Quantidade *
                         </label>
                         <div className="relative">
                           <input
@@ -883,7 +849,7 @@ const UploadXML = () => {
                       {/* Unidade */}
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          Unidade
+                          Unidade *
                         </label>
                         <div className="relative">
                           <input
@@ -895,6 +861,46 @@ const UploadXML = () => {
                           />
                           <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         </div>
+                      </div>
+
+                      {/* Registro MAPA - Dividido em Empresa + Produto */}
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Registro MAPA do Produto *
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          {/* Prefixo da Empresa (readonly) */}
+                          {previewData.empresa_mapa_registration ? (
+                            <>
+                              <div className="flex-shrink-0 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm font-mono text-gray-700">
+                                {previewData.empresa_mapa_registration}
+                              </div>
+                              <span className="text-gray-400">-</span>
+                            </>
+                          ) : (
+                            <div className="flex-shrink-0 px-3 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-xs text-yellow-800">
+                              Empresa não cadastrada
+                            </div>
+                          )}
+
+                          {/* Parte do Produto (editável) */}
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              value={produtoData.registro_mapa || ''}
+                              onChange={(e) => handleEditProductField(index, 'registro_mapa', e.target.value)}
+                              className="input-field text-sm pr-10 font-mono"
+                              placeholder="Ex: 6.000001"
+                              disabled={!previewData.empresa_mapa_registration}
+                            />
+                            <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {previewData.empresa_mapa_registration
+                            ? `Registro completo: ${previewData.empresa_mapa_registration}-${produtoData.registro_mapa || '______'}`
+                            : 'Cadastre a empresa primeiro para preencher o registro MAPA'}
+                        </p>
                       </div>
                     </div>
                   </div>

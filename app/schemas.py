@@ -150,6 +150,7 @@ class XMLPreviewResponse(BaseModel):
     nfe_data: dict
     periodo_trimestral: Optional[str]
     empresa_encontrada: Optional[str]
+    empresa_mapa_registration: Optional[str]
     total_produtos: int
     produtos_status: list  # Lista com {descricao, codigo, cadastrado: bool}
 
