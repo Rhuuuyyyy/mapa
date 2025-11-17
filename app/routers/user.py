@@ -755,9 +755,10 @@ async def download_report(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Gera relatório para download (JSON formatado temporariamente, PDF futuro).
+    Gera relatório em PDF para download.
     """
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import StreamingResponse
+    from app.utils.pdf_generator import MAPAReportPDFGenerator
     import traceback
 
     try:
@@ -784,15 +785,27 @@ async def download_report(
                 detail=result.get("error", "Erro ao processar relatório")
             )
 
-        # Retornar JSON formatado (temporário - implementar PDF depois)
-        return JSONResponse(
-            content={
-                "period": report_period,
-                "total_nfes": result["total_nfes"],
-                "rows": result["rows"]
-            },
+        # Gerar PDF
+        pdf_generator = MAPAReportPDFGenerator()
+        user_info = {
+            "full_name": current_user.full_name,
+            "company_name": current_user.company_name,
+            "email": current_user.email
+        }
+
+        pdf_buffer = pdf_generator.generate_report(
+            period=report_period,
+            rows=result["rows"],
+            user_info=user_info,
+            total_nfes=result["total_nfes"]
+        )
+
+        # Retornar PDF como streaming response
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.json"
+                "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.pdf"
             }
         )
     except HTTPException:
