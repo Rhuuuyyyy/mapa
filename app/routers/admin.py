@@ -275,3 +275,66 @@ async def delete_user(
     db.commit()
 
     return None
+
+
+# ============================================================================
+# TEMPORARY MIGRATION ENDPOINT
+# ============================================================================
+
+@router.post("/migrate/add-period-column")
+async def run_migration_add_period(
+    db: Session = Depends(get_db)
+):
+    """
+    ENDPOINT TEMPORÁRIO: Adiciona coluna 'period' na tabela xml_uploads.
+
+    ⚠️ IMPORTANTE: Este endpoint deve ser REMOVIDO após executar a migração!
+
+    Este endpoint executa a migração diretamente no banco de dados para adicionar
+    a coluna 'period' que está faltando e causando erros 500.
+    """
+    from sqlalchemy import text
+
+    try:
+        # Verificar se a coluna já existe
+        result = db.execute(text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'xml_uploads'
+            AND column_name = 'period'
+        """))
+
+        existing_column = result.fetchone()
+
+        if existing_column:
+            return {
+                "status": "already_exists",
+                "message": "✅ Coluna 'period' já existe na tabela xml_uploads",
+                "detail": "Nenhuma ação necessária. A migração já foi executada anteriormente."
+            }
+
+        # Adicionar coluna
+        db.execute(text("""
+            ALTER TABLE xml_uploads
+            ADD COLUMN period VARCHAR(20)
+        """))
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": "✅ Coluna 'period' adicionada com sucesso à tabela xml_uploads!",
+            "detail": "A migração foi executada. Os erros 500 devem ter sido corrigidos.",
+            "next_steps": [
+                "Teste fazer upload de um XML",
+                "Tente gerar um relatório",
+                "Verifique se os erros 500 sumiram",
+                "IMPORTANTE: Remova este endpoint em produção!"
+            ]
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao executar migração: {str(e)}"
+        )
