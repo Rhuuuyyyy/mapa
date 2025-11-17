@@ -42,6 +42,7 @@ const UploadXML = () => {
   const [savingProduct, setSavingProduct] = useState(false);
   const [selectedProductIndex, setSelectedProductIndex] = useState(null);
   const [userCompanies, setUserCompanies] = useState([]);
+  const [editedProducts, setEditedProducts] = useState({});
 
   useEffect(() => {
     loadUploadHistory();
@@ -229,15 +230,56 @@ const UploadXML = () => {
     }
   };
 
+  const handleEditProductField = (productIndex, field, value) => {
+    setEditedProducts(prev => ({
+      ...prev,
+      [productIndex]: {
+        ...(prev[productIndex] || {}),
+        [field]: value
+      }
+    }));
+  };
+
+  const getProductData = (productIndex) => {
+    const originalProduct = previewData.nfe_data.produtos[productIndex];
+    const edits = editedProducts[productIndex] || {};
+
+    return {
+      descricao: edits.descricao !== undefined ? edits.descricao : originalProduct.descricao,
+      codigo: edits.codigo !== undefined ? edits.codigo : originalProduct.codigo,
+      unidade: edits.unidade !== undefined ? edits.unidade : originalProduct.unidade,
+      quantidade: edits.quantidade !== undefined ? edits.quantidade : originalProduct.quantidade,
+      registro_mapa: edits.registro_mapa !== undefined ? edits.registro_mapa : originalProduct.registro_mapa
+    };
+  };
+
   const handleConfirm = async () => {
     setError(null);
     setConfirming(true);
 
     try {
+      // Aplicar edições aos dados do NFe antes de enviar
+      const updatedNfeData = {
+        ...previewData.nfe_data,
+        produtos: previewData.nfe_data.produtos.map((produto, index) => {
+          const edits = editedProducts[index];
+          if (!edits) return produto;
+
+          return {
+            ...produto,
+            ...(edits.descricao !== undefined && { descricao: edits.descricao }),
+            ...(edits.codigo !== undefined && { codigo: edits.codigo }),
+            ...(edits.unidade !== undefined && { unidade: edits.unidade }),
+            ...(edits.quantidade !== undefined && { quantidade: edits.quantidade }),
+            ...(edits.registro_mapa !== undefined && { registro_mapa: edits.registro_mapa })
+          };
+        })
+      };
+
       await xmlUploadsAPI.uploadConfirm({
         temp_file_path: previewData.temp_file_path,
         filename: previewData.filename,
-        nfe_data: previewData.nfe_data
+        nfe_data: updatedNfeData
       });
       setStep('success');
       loadUploadHistory(); // Recarregar histórico
@@ -640,57 +682,174 @@ const UploadXML = () => {
           </div>
         )}
 
-        {/* Produtos */}
+        {/* Produtos - Detalhado e Editável */}
         {previewData.produtos_status && previewData.produtos_status.length > 0 && (
           <div className="card">
-            <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
-              <Package className="w-5 h-5 mr-2 text-emerald-600" />
-              Produtos ({previewData.produtos_status.length})
-            </h3>
-            <div className="space-y-3">
-              {previewData.produtos_status.map((produto, index) => (
-                <div
-                  key={index}
-                  className={`p-4 rounded-lg border-2 ${
-                    produto.cadastrado
-                      ? 'bg-emerald-50 border-emerald-200'
-                      : 'bg-red-50 border-red-200'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 text-lg flex items-center">
+                <Package className="w-5 h-5 mr-2 text-emerald-600" />
+                Produtos ({previewData.produtos_status.length})
+              </h3>
+              <p className="text-sm text-gray-600">
+                Revise e edite os dados antes de confirmar
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {previewData.produtos_status.map((produtoStatus, index) => {
+                const produtoData = getProductData(index);
+                const isEdited = editedProducts[index] && Object.keys(editedProducts[index]).length > 0;
+
+                return (
+                  <div
+                    key={index}
+                    className={`p-5 rounded-xl border-2 transition-all ${
+                      produtoStatus.cadastrado
+                        ? 'bg-emerald-50 border-emerald-200'
+                        : 'bg-red-50 border-red-200'
+                    } ${isEdited ? 'ring-2 ring-blue-400' : ''}`}
+                  >
+                    {/* Header com Status */}
+                    <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-2">
-                        {produto.cadastrado ? (
+                        {produtoStatus.cadastrado ? (
                           <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                         ) : (
                           <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                         )}
-                        <p className={`font-medium ${produto.cadastrado ? 'text-emerald-900' : 'text-red-900'}`}>
-                          {produto.descricao || `Produto ${index + 1}`}
-                        </p>
+                        <div>
+                          <p className={`font-semibold text-lg ${produtoStatus.cadastrado ? 'text-emerald-900' : 'text-red-900'}`}>
+                            Produto {index + 1}
+                          </p>
+                          <p className={`text-sm ${produtoStatus.cadastrado ? 'text-emerald-700' : 'text-red-700'}`}>
+                            {produtoStatus.cadastrado ? 'Cadastrado no sistema' : 'Não cadastrado'}
+                          </p>
+                        </div>
                       </div>
-                      {produto.codigo && (
-                        <p className={`text-sm mt-1 ml-7 ${produto.cadastrado ? 'text-emerald-700' : 'text-red-700'}`}>
-                          Código: {produto.codigo}
-                        </p>
+                      {!produtoStatus.cadastrado && (
+                        <button
+                          onClick={() => handleOpenProductModal(index)}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Cadastrar
+                        </button>
                       )}
-                      <p className={`text-sm mt-1 ml-7 ${produto.cadastrado ? 'text-emerald-700' : 'text-red-700'}`}>
-                        {produto.cadastrado ? 'Produto cadastrado no sistema' : 'Produto não encontrado no sistema'}
-                      </p>
+                      {isEdited && (
+                        <div className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full flex items-center">
+                          <Edit2 className="w-3 h-3 mr-1" />
+                          Editado
+                        </div>
+                      )}
                     </div>
-                    {!produto.cadastrado && (
-                      <button
-                        onClick={() => handleOpenProductModal(index)}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Cadastrar
-                      </button>
-                    )}
+
+                    {/* Campos Editáveis */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Nome do Produto */}
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Nome do Produto
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={produtoData.descricao || ''}
+                            onChange={(e) => handleEditProductField(index, 'descricao', e.target.value)}
+                            className="input-field text-sm pr-10"
+                            placeholder="Digite o nome do produto"
+                          />
+                          <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        </div>
+                      </div>
+
+                      {/* Código */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Código do Produto
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={produtoData.codigo || ''}
+                            onChange={(e) => handleEditProductField(index, 'codigo', e.target.value)}
+                            className="input-field text-sm pr-10"
+                            placeholder="Código"
+                          />
+                          <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        </div>
+                      </div>
+
+                      {/* Registro MAPA */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Registro MAPA
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={produtoData.registro_mapa || ''}
+                            onChange={(e) => handleEditProductField(index, 'registro_mapa', e.target.value)}
+                            className="input-field text-sm pr-10"
+                            placeholder="Ex: PR-12345-6.000001"
+                          />
+                          <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        </div>
+                      </div>
+
+                      {/* Quantidade */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Quantidade
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={produtoData.quantidade || ''}
+                            onChange={(e) => handleEditProductField(index, 'quantidade', e.target.value)}
+                            className="input-field text-sm pr-10"
+                            placeholder="0.00"
+                          />
+                          <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        </div>
+                      </div>
+
+                      {/* Unidade */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Unidade
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={produtoData.unidade || ''}
+                            onChange={(e) => handleEditProductField(index, 'unidade', e.target.value)}
+                            className="input-field text-sm pr-10"
+                            placeholder="Ex: KG, TON"
+                          />
+                          <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Aviso sobre edições */}
+            {Object.keys(editedProducts).length > 0 && (
+              <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-blue-900 mb-1">Produtos Editados</h4>
+                    <p className="text-sm text-blue-800">
+                      Você editou {Object.keys(editedProducts).length} {Object.keys(editedProducts).length === 1 ? 'produto' : 'produtos'}.
+                      As alterações serão salvas ao confirmar o upload.
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
