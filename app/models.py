@@ -109,6 +109,7 @@ class XMLUpload(Base):
     filename = Column(String(500), nullable=False)
     file_path = Column(String(1000), nullable=False)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
+    period = Column(String(20), nullable=True)  # Ex: "Q1-2025", "2024Q3"
 
     status = Column(String(50), default="pending")  # pending, processed, error
     error_message = Column(Text, nullable=True)

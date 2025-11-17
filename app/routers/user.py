@@ -477,11 +477,26 @@ async def upload_xml_confirm(
             detail=f"Erro ao mover arquivo: {str(e)}"
         )
 
+    # Processar XML para extrair período
+    period = None
+    if upload_data.nfe_data and upload_data.nfe_data.get('data_emissao'):
+        try:
+            from datetime import datetime as dt
+            data_emissao = upload_data.nfe_data['data_emissao']
+            if isinstance(data_emissao, str):
+                data_emissao = dt.fromisoformat(data_emissao.split('T')[0])
+            ano = data_emissao.year
+            trimestre = (data_emissao.month - 1) // 3 + 1
+            period = f"Q{trimestre}-{ano}"
+        except Exception as e:
+            print(f"Erro ao calcular período: {e}")
+
     # Criar registro no banco com dados confirmados/editados
     xml_upload = models.XMLUpload(
         user_id=current_user.id,
         filename=upload_data.filename,
         file_path=str(permanent_path),
+        period=period,
         status="processed"
     )
 
