@@ -423,6 +423,7 @@ async def upload_xml_preview(
             "nfe_data": xml_data,
             "periodo_trimestral": periodo_trimestral,
             "empresa_encontrada": matched_company.company_name if matched_company else None,
+            "empresa_mapa_registration": matched_company.mapa_registration if matched_company else None,
             "total_produtos": len(xml_data.get('produtos', [])),
             "produtos_status": produtos_status
         }
