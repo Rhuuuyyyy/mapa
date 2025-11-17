@@ -63,6 +63,7 @@ class MAPAProcessor:
         aggregated_data = defaultdict(lambda: {
             "quantity_import": Decimal("0"),
             "quantity_domestic": Decimal("0"),
+            "product_name": None,
             "product_reference": None,
             "source_nfes": []
         })
@@ -132,6 +133,7 @@ class MAPAProcessor:
                 else:
                     aggregated_data[mapa_registration]["quantity_domestic"] += quantity_tonnes
 
+                aggregated_data[mapa_registration]["product_name"] = product_entry.product_name
                 aggregated_data[mapa_registration]["product_reference"] = product_entry.product_reference
                 aggregated_data[mapa_registration]["source_nfes"].append(nfe_data.numero_nota)
 
@@ -151,6 +153,7 @@ class MAPAProcessor:
         for mapa_reg, data in aggregated_data.items():
             rows.append({
                 "mapa_registration": mapa_reg,
+                "product_name": data["product_name"],
                 "product_reference": data["product_reference"],
                 "unit": "Tonelada",
                 "quantity_import": str(data["quantity_import"]),
