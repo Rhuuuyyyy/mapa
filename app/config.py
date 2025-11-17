@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
 
     # CORS - Aceita string com vírgulas ou lista
-    allowed_origins: Union[str, List[str]] = "*"
+    # Inclui localhost para desenvolvimento
+    allowed_origins: Union[str, List[str]] = "http://localhost:3000,https://mapa-app-clean-8270.azurewebsites.net"
 
     # Upload
     max_upload_size: int = 10 * 1024 * 1024  # 10MB
