@@ -43,6 +43,13 @@ const UploadXML = () => {
   const [selectedProductIndex, setSelectedProductIndex] = useState(null);
   const [userCompanies, setUserCompanies] = useState([]);
 
+  // Estados para edição de XML
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUpload, setEditingUpload] = useState(null);
+  const [editData, setEditData] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
   useEffect(() => {
     loadUploadHistory();
     loadUserCompanies();
@@ -267,6 +274,61 @@ const UploadXML = () => {
     setError(null);
   };
 
+  // Funções para edição de XML
+  const handleEditUpload = async (uploadId) => {
+    try {
+      setLoadingEdit(true);
+      const details = await xmlUploadsAPI.getDetails(uploadId);
+      setEditingUpload(details);
+      setEditData({
+        produtos: details.nfe_data.produtos.map(p => ({
+          codigo: p.codigo,
+          descricao: p.descricao,
+          quantidade: p.quantidade,
+          unidade: p.unidade,
+          mapa_registration: p.matched_mapa_registration || '',
+          product_reference: p.matched_product_reference || ''
+        }))
+      });
+      setShowEditModal(true);
+    } catch (err) {
+      alert('Erro ao carregar dados do XML para edição');
+      console.error(err);
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      setSavingEdit(true);
+      await xmlUploadsAPI.update(editingUpload.id, editData);
+      setShowEditModal(false);
+      loadUploadHistory();
+      alert('XML atualizado com sucesso!');
+    } catch (err) {
+      alert('Erro ao salvar alterações');
+      console.error(err);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingUpload(null);
+    setEditData(null);
+  };
+
+  const handleEditProductField = (index, field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      produtos: prev.produtos.map((p, i) =>
+        i === index ? { ...p, [field]: value } : p
+      )
+    }));
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -451,11 +513,16 @@ const UploadXML = () => {
                           )}
 
                           <button
-                            onClick={() => alert(`Visualização/edição de XML em desenvolvimento.\n\nArquivo: ${upload.filename}\nStatus: ${upload.status}\nPer\u00edodo: ${upload.period || 'N/A'}`)}
+                            onClick={() => handleEditUpload(upload.id)}
                             className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Visualizar"
+                            title="Visualizar/Editar"
+                            disabled={loadingEdit}
                           >
-                            <Edit2 className="w-4 h-4 text-emerald-600" />
+                            {loadingEdit ? (
+                              <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                            ) : (
+                              <Edit2 className="w-4 h-4 text-emerald-600" />
+                            )}
                           </button>
                           <button
                             onClick={() => handleDeleteUpload(upload.id)}
