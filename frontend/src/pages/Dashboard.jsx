@@ -416,7 +416,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
-        ) : propostaData?.sections ? (
+        ) : propostaData?.sections && propostaData.sections.length > 0 ? (
           <div className="bg-white rounded-lg border-2 border-blue-200 overflow-hidden">
             {propostaData.sections.map((section, index) => (
               <PropostaSection
@@ -431,7 +431,7 @@ const Dashboard = () => {
           <div className="bg-white rounded-lg border-2 border-gray-200 p-8 text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600">
-              Nenhum conteúdo disponível no momento.
+              {propostaData ? `Nenhuma seção encontrada. Total de seções: ${propostaData.sections?.length || 0}` : 'Erro ao carregar conteúdo.'}
             </p>
           </div>
         )}

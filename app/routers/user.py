@@ -981,6 +981,9 @@ async def get_proposta_comercial(
         # Caminho do arquivo (na raiz do projeto)
         proposta_path = Path(__file__).parent.parent.parent / "PROPOSTA_COMERCIAL_MAPA_SAAS.md"
 
+        print(f"[PROPOSTA] Caminho do arquivo: {proposta_path}")
+        print(f"[PROPOSTA] Arquivo existe: {proposta_path.exists()}")
+
         if not proposta_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -990,6 +993,8 @@ async def get_proposta_comercial(
         # Ler o conteúdo do arquivo
         with open(proposta_path, 'r', encoding='utf-8') as f:
             content = f.read()
+
+        print(f"[PROPOSTA] Tamanho do conteúdo: {len(content)} caracteres")
 
         # Processar o markdown para extrair seções
         sections = []
@@ -1020,6 +1025,10 @@ async def get_proposta_comercial(
                 "title": current_section,
                 "content": '\n'.join(current_content).strip()
             })
+
+        print(f"[PROPOSTA] Total de seções encontradas: {len(sections)}")
+        if sections:
+            print(f"[PROPOSTA] Primeira seção: {sections[0]['title']}")
 
         return {
             "sections": sections,
