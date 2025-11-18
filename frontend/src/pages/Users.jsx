@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { users as usersAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
@@ -33,6 +35,8 @@ const Users = () => {
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, user: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadUsers();
@@ -177,20 +181,39 @@ const Users = () => {
 
   const handleDelete = async (user) => {
     if (user.id === currentUser?.id) {
-      alert('Você não pode excluir sua própria conta');
+      setAlertDialog({
+        show: true,
+        title: 'Ação não permitida',
+        message: 'Você não pode excluir sua própria conta.',
+        type: 'warning'
+      });
       return;
     }
 
-    if (!window.confirm(`Tem certeza que deseja excluir o usuário "${user.email}"?`)) {
-      return;
-    }
+    setConfirmDelete({ show: true, user });
+  };
+
+  const confirmDeleteAction = async () => {
+    const user = confirmDelete.user;
+    setConfirmDelete({ show: false, user: null });
 
     try {
       await usersAPI.delete(user.id);
       await loadUsers();
+      setAlertDialog({
+        show: true,
+        title: 'Usuário excluído',
+        message: `O usuário "${user.email}" foi excluído com sucesso.`,
+        type: 'success'
+      });
     } catch (error) {
       console.error('Erro ao excluir usuário:', error);
-      alert('Erro ao excluir usuário');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o usuário. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -491,6 +514,26 @@ const Users = () => {
           </div>
         </div>
       )}
+
+      {/* Modais customizados */}
+      <ConfirmDialog
+        isOpen={confirmDelete.show}
+        title="Confirmar exclusão"
+        message={`Tem certeza que deseja excluir o usuário "${confirmDelete.user?.email}"?`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ show: false, user: null })}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.show}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+      />
     </div>
   );
 };

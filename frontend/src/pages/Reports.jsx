@@ -13,6 +13,8 @@ import {
   Eye
 } from 'lucide-react';
 import { reports as reportsAPI } from '../services/api';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const Reports = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('');
@@ -22,6 +24,8 @@ const Reports = () => {
   const [error, setError] = useState(null);
   const [reportHistory, setReportHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, reportId: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadReportHistory();
@@ -207,15 +211,30 @@ const Reports = () => {
   };
 
   const handleDeleteReport = async (reportId) => {
-    if (!window.confirm('Tem certeza que deseja excluir este relatório?')) {
-      return;
-    }
+    setConfirmDelete({ show: true, reportId });
+  };
+
+  const confirmDeleteAction = async () => {
+    const reportId = confirmDelete.reportId;
+    setConfirmDelete({ show: false, reportId: null });
 
     try {
       await reportsAPI.delete(reportId);
       loadReportHistory();
+      setAlertDialog({
+        show: true,
+        title: 'Relatório excluído',
+        message: 'O relatório foi excluído com sucesso.',
+        type: 'success'
+      });
     } catch (err) {
-      alert('Erro ao excluir relatório');
+      console.error('Erro ao excluir relatório:', err);
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o relatório. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -581,6 +600,26 @@ const Reports = () => {
           </div>
         )}
       </div>
+
+      {/* Modais customizados */}
+      <ConfirmDialog
+        isOpen={confirmDelete.show}
+        title="Confirmar exclusão"
+        message="Tem certeza que deseja excluir este relatório?"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ show: false, reportId: null })}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.show}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+      />
     </div>
   );
 };

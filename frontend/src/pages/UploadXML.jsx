@@ -17,6 +17,8 @@ import {
   X
 } from 'lucide-react';
 import { xmlUploads as xmlUploadsAPI, companies as companiesAPI, products as productsAPI } from '../services/api';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const UploadXML = () => {
   const [step, setStep] = useState('upload'); // 'upload', 'preview', 'success'
@@ -50,6 +52,10 @@ const UploadXML = () => {
   const [editData, setEditData] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+
+  // Estados para modais customizados
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, uploadId: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadUploadHistory();
@@ -142,7 +148,12 @@ const UploadXML = () => {
 
   const handleSaveCompany = async () => {
     if (!companyFormData.company_name.trim() || !companyFormData.mapa_registration.trim()) {
-      alert('Preencha todos os campos');
+      setAlertDialog({
+        show: true,
+        title: 'Campos obrigatórios',
+        message: 'Por favor, preencha todos os campos para cadastrar a empresa.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -160,9 +171,19 @@ const UploadXML = () => {
       }));
 
       handleCloseCompanyModal();
-      alert('Empresa cadastrada com sucesso!');
+      setAlertDialog({
+        show: true,
+        title: 'Empresa cadastrada',
+        message: 'A empresa foi cadastrada com sucesso!',
+        type: 'success'
+      });
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao cadastrar empresa');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao cadastrar',
+        message: err.response?.data?.detail || 'Erro ao cadastrar empresa',
+        type: 'error'
+      });
     } finally {
       setSavingCompany(false);
     }
@@ -187,12 +208,22 @@ const UploadXML = () => {
 
   const handleSaveProduct = async () => {
     if (!productFormData.product_name.trim() || !productFormData.mapa_registration.trim()) {
-      alert('Preencha o nome e código do produto');
+      setAlertDialog({
+        show: true,
+        title: 'Campos obrigatórios',
+        message: 'Por favor, preencha o nome e código do produto.',
+        type: 'warning'
+      });
       return;
     }
 
     if (!productFormData.company_id) {
-      alert('Selecione uma empresa para vincular o produto');
+      setAlertDialog({
+        show: true,
+        title: 'Empresa não selecionada',
+        message: 'Selecione uma empresa para vincular o produto.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -229,7 +260,12 @@ const UploadXML = () => {
       }));
 
       handleCloseProductModal();
-      alert('Produto cadastrado com sucesso!');
+      setAlertDialog({
+        show: true,
+        title: 'Produto cadastrado',
+        message: 'O produto foi cadastrado com sucesso!',
+        type: 'success'
+      });
     } catch (err) {
       // Melhor formatação de erro
       let errorMsg = 'Erro ao cadastrar produto';
@@ -241,7 +277,12 @@ const UploadXML = () => {
           errorMsg = detail;
         }
       }
-      alert(errorMsg);
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao cadastrar',
+        message: errorMsg,
+        type: 'error'
+      });
     } finally {
       setSavingProduct(false);
     }
@@ -308,15 +349,29 @@ const UploadXML = () => {
   };
 
   const handleDeleteUpload = async (uploadId) => {
-    if (!window.confirm('Tem certeza que deseja excluir este upload?')) {
-      return;
-    }
+    setConfirmDelete({ show: true, uploadId });
+  };
+
+  const confirmDeleteAction = async () => {
+    const uploadId = confirmDelete.uploadId;
+    setConfirmDelete({ show: false, uploadId: null });
 
     try {
       await xmlUploadsAPI.delete(uploadId);
       loadUploadHistory();
+      setAlertDialog({
+        show: true,
+        title: 'Upload excluído',
+        message: 'O upload foi excluído com sucesso.',
+        type: 'success'
+      });
     } catch (err) {
-      alert('Erro ao excluir upload');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o upload. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -344,7 +399,12 @@ const UploadXML = () => {
       });
       setShowEditModal(true);
     } catch (err) {
-      alert('Erro ao carregar dados do XML para edição');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao carregar',
+        message: 'Não foi possível carregar os dados do XML para edição.',
+        type: 'error'
+      });
       console.error(err);
     } finally {
       setLoadingEdit(false);
@@ -357,9 +417,19 @@ const UploadXML = () => {
       await xmlUploadsAPI.update(editingUpload.id, editData);
       setShowEditModal(false);
       loadUploadHistory();
-      alert('XML atualizado com sucesso!');
+      setAlertDialog({
+        show: true,
+        title: 'XML atualizado',
+        message: 'O XML foi atualizado com sucesso!',
+        type: 'success'
+      });
     } catch (err) {
-      alert('Erro ao salvar alterações');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao salvar',
+        message: 'Não foi possível salvar as alterações. Tente novamente.',
+        type: 'error'
+      });
       console.error(err);
     } finally {
       setSavingEdit(false);
@@ -1341,6 +1411,26 @@ const UploadXML = () => {
             </div>
           </div>
         )}
+
+        {/* Modais customizados */}
+        <ConfirmDialog
+          isOpen={confirmDelete.show}
+          title="Confirmar exclusão"
+          message="Tem certeza que deseja excluir este upload?"
+          onConfirm={confirmDeleteAction}
+          onCancel={() => setConfirmDelete({ show: false, uploadId: null })}
+          confirmText="Sim, excluir"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+
+        <AlertDialog
+          isOpen={alertDialog.show}
+          title={alertDialog.title}
+          message={alertDialog.message}
+          type={alertDialog.type}
+          onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+        />
       </div>
     );
   }
