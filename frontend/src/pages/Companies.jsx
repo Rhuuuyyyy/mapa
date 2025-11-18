@@ -162,7 +162,7 @@ const Companies = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="btn-primary mt-4 sm:mt-0"
+          className="btn-primary mt-4 sm:mt-0 flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" />
           Nova Empresa
@@ -199,7 +199,7 @@ const Companies = () => {
             {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando sua primeira empresa'}
           </p>
           {!searchTerm && (
-            <button onClick={() => handleOpenModal()} className="btn-primary">
+            <button onClick={() => handleOpenModal()} className="btn-primary flex items-center">
               <Plus className="w-5 h-5 mr-2" />
               Cadastrar Primeira Empresa
             </button>

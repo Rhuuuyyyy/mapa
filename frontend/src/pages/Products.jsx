@@ -201,7 +201,7 @@ const Products = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="btn-primary mt-4 sm:mt-0"
+          className="btn-primary mt-4 sm:mt-0 flex items-center"
           disabled={companies.length === 0}
         >
           <Plus className="w-5 h-5 mr-2" />
@@ -257,7 +257,7 @@ const Products = () => {
             {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando seu primeiro produto'}
           </p>
           {!searchTerm && companies.length > 0 && (
-            <button onClick={() => handleOpenModal()} className="btn-primary">
+            <button onClick={() => handleOpenModal()} className="btn-primary flex items-center">
               <Plus className="w-5 h-5 mr-2" />
               Cadastrar Primeiro Produto
             </button>

@@ -157,7 +157,7 @@ const Catalog = () => {
         </div>
         <button
           onClick={exportCatalog}
-          className="btn-primary mt-4 sm:mt-0"
+          className="btn-primary mt-4 sm:mt-0 flex items-center"
           disabled={catalogData.length === 0}
         >
           <Download className="w-5 h-5 mr-2" />
