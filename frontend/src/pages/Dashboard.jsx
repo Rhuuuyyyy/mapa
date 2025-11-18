@@ -449,7 +449,7 @@ const Dashboard = () => {
               <p className="text-sm text-gray-700">
                 Este conteúdo é carregado dinamicamente do arquivo{' '}
                 <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                  PROPOSTA_COMERCIAL_MAPA_SAAS.md
+                  PROPOSTA_COMERCIAL_WORD.txt
                 </code>
                 . Qualquer alteração no arquivo será refletida automaticamente aqui ao recarregar a página.
               </p>

@@ -1110,13 +1110,13 @@ async def get_proposta_comercial(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Retorna o conteúdo do arquivo PROPOSTA_COMERCIAL_MAPA_SAAS.md.
+    Retorna o conteúdo do arquivo PROPOSTA_COMERCIAL_WORD.txt.
     Este conteúdo é lido dinamicamente do arquivo, então qualquer alteração
     no arquivo será refletida automaticamente no dashboard.
     """
     try:
         # Caminho do arquivo (na raiz do projeto)
-        proposta_path = Path(__file__).parent.parent.parent / "PROPOSTA_COMERCIAL_MAPA_SAAS.md"
+        proposta_path = Path(__file__).parent.parent.parent / "PROPOSTA_COMERCIAL_WORD.txt"
 
         print(f"[PROPOSTA] Caminho do arquivo: {proposta_path}")
         print(f"[PROPOSTA] Arquivo existe: {proposta_path.exists()}")
@@ -1133,28 +1133,44 @@ async def get_proposta_comercial(
 
         print(f"[PROPOSTA] Tamanho do conteúdo: {len(content)} caracteres")
 
-        # Processar o markdown para extrair seções
+        # Processar o arquivo para extrair seções
+        # Formato: ================ seguido do TÍTULO e outro ================
         sections = []
         current_section = None
         current_content = []
 
-        for line in content.split('\n'):
-            # Detectar cabeçalhos de seção (## Título)
-            if line.startswith('## ') and not line.startswith('###'):
-                # Salvar seção anterior se existir
-                if current_section:
-                    sections.append({
-                        "title": current_section,
-                        "content": '\n'.join(current_content).strip()
-                    })
+        lines = content.split('\n')
+        i = 0
 
-                # Iniciar nova seção
-                current_section = line[3:].strip()  # Remove "## "
-                current_content = []
-            else:
-                # Adicionar linha ao conteúdo da seção atual
-                if current_section:
-                    current_content.append(line)
+        while i < len(lines):
+            line = lines[i]
+
+            # Detectar linha de separador (======)
+            if line.strip().startswith('=' * 10):
+                # Verificar se a próxima linha é o título e a seguinte é outro separador
+                if i + 2 < len(lines):
+                    potential_title = lines[i + 1].strip()
+                    next_separator = lines[i + 2].strip()
+
+                    if next_separator.startswith('=' * 10) and potential_title:
+                        # Salvar seção anterior se existir
+                        if current_section:
+                            sections.append({
+                                "title": current_section,
+                                "content": '\n'.join(current_content).strip()
+                            })
+
+                        # Iniciar nova seção
+                        current_section = potential_title
+                        current_content = []
+                        i += 3  # Pular separador, título e segundo separador
+                        continue
+
+            # Adicionar linha ao conteúdo da seção atual
+            if current_section:
+                current_content.append(line)
+
+            i += 1
 
         # Adicionar última seção
         if current_section:
