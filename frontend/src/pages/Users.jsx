@@ -250,7 +250,7 @@ const Users = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="btn-primary mt-4 sm:mt-0"
+          className="btn-primary mt-4 sm:mt-0 flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" />
           Novo Usuário
@@ -287,7 +287,7 @@ const Users = () => {
             {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando seu primeiro usuário'}
           </p>
           {!searchTerm && (
-            <button onClick={() => handleOpenModal()} className="btn-primary">
+            <button onClick={() => handleOpenModal()} className="btn-primary flex items-center">
               <Plus className="w-5 h-5 mr-2" />
               Cadastrar Primeiro Usuário
             </button>

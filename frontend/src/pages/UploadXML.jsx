@@ -662,6 +662,26 @@ const UploadXML = () => {
             </div>
           )}
         </div>
+
+        {/* Modais customizados */}
+        <ConfirmDialog
+          isOpen={confirmDelete.show}
+          title="Confirmar exclusão"
+          message="Tem certeza que deseja excluir este upload?"
+          onConfirm={confirmDeleteAction}
+          onCancel={() => setConfirmDelete({ show: false, uploadId: null })}
+          confirmText="Sim, excluir"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+
+        <AlertDialog
+          isOpen={alertDialog.show}
+          title={alertDialog.title}
+          message={alertDialog.message}
+          type={alertDialog.type}
+          onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+        />
       </div>
     );
   }
@@ -681,7 +701,7 @@ const UploadXML = () => {
           </div>
           <button
             onClick={handleReset}
-            className="btn-secondary"
+            className="btn-secondary flex items-center"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
             Voltar
@@ -1049,7 +1069,7 @@ const UploadXML = () => {
                   <button
                     onClick={handleConfirm}
                     disabled={confirming || temPendencias}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   >
                     {confirming ? (
                       <>
@@ -1260,11 +1280,11 @@ const UploadXML = () => {
           </p>
 
           <div className="flex items-center justify-center space-x-4">
-            <button onClick={handleReset} className="btn-primary">
+            <button onClick={handleReset} className="btn-primary flex items-center">
               <Upload className="w-5 h-5 mr-2" />
               Enviar Outro Arquivo
             </button>
-            <a href="/reports" className="btn-secondary">
+            <a href="/reports" className="btn-secondary flex items-center">
               <FileText className="w-5 h-5 mr-2" />
               Ver Relatórios
             </a>

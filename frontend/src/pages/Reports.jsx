@@ -400,7 +400,7 @@ const Reports = () => {
                 <button
                   onClick={handleGenerate}
                   disabled={!selectedPeriod || generating}
-                  className="btn-primary flex-1"
+                  className="btn-primary flex-1 flex items-center justify-center"
                 >
                   {generating ? (
                     <>
@@ -417,7 +417,7 @@ const Reports = () => {
                 <button
                   onClick={handleDownload}
                   disabled={!selectedPeriod || downloading}
-                  className="btn-secondary flex-1"
+                  className="btn-secondary flex-1 flex items-center justify-center"
                 >
                   {downloading ? (
                     <>
