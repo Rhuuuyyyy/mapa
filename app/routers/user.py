@@ -1001,9 +1001,32 @@ async def get_proposta_comercial(
         current_section = None
         current_content = []
 
-        for line in content.split('\n'):
-            # Detectar cabeçalhos de seção (## Título)
+        lines = content.split('\n')
+
+        for i, line in enumerate(lines):
+            is_section_header = False
+            section_title = None
+
+            # Método 1: Detectar cabeçalhos com ## (markdown padrão)
             if line.startswith('## ') and not line.startswith('###'):
+                is_section_header = True
+                section_title = line[3:].strip()
+
+            # Método 2: Detectar títulos em maiúsculas (fallback para arquivo sem ##)
+            # Linha toda em maiúsculas, sem marcadores, com pelo menos 3 caracteres
+            elif (len(line.strip()) >= 3 and
+                  line.strip().isupper() and
+                  not line.startswith('#') and
+                  not line.startswith('-') and
+                  not line.startswith('|') and
+                  not line.startswith('*')):
+                # Verificar se não é uma linha de separador
+                next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
+                if next_line != '---':
+                    is_section_header = True
+                    section_title = line.strip()
+
+            if is_section_header and section_title:
                 # Salvar seção anterior se existir
                 if current_section:
                     sections.append({
@@ -1012,7 +1035,7 @@ async def get_proposta_comercial(
                     })
 
                 # Iniciar nova seção
-                current_section = line[3:].strip()  # Remove "## "
+                current_section = section_title
                 current_content = []
             else:
                 # Adicionar linha ao conteúdo da seção atual
