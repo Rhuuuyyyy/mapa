@@ -973,13 +973,13 @@ async def get_proposta_comercial(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Retorna o conteúdo do arquivo PROPOSTA_COMERCIAL_MAPA_SAAS.md.
+    Retorna o conteúdo do arquivo PROPOSTA_COMERCIAL_WORD.txt.
     Este conteúdo é lido dinamicamente do arquivo, então qualquer alteração
     no arquivo será refletida automaticamente no dashboard.
     """
     try:
         # Caminho do arquivo (na raiz do projeto)
-        proposta_path = Path(__file__).parent.parent.parent / "PROPOSTA_COMERCIAL_MAPA_SAAS.md"
+        proposta_path = Path(__file__).parent.parent.parent / "PROPOSTA_COMERCIAL_WORD.txt"
 
         print(f"[PROPOSTA] Caminho do arquivo: {proposta_path}")
         print(f"[PROPOSTA] Arquivo existe: {proposta_path.exists()}")
@@ -996,51 +996,44 @@ async def get_proposta_comercial(
 
         print(f"[PROPOSTA] Tamanho do conteúdo: {len(content)} caracteres")
 
-        # Processar o markdown para extrair seções
+        # Processar o arquivo para extrair seções
+        # Formato: ================ seguido do TÍTULO e outro ================
         sections = []
         current_section = None
         current_content = []
 
         lines = content.split('\n')
+        i = 0
 
-        for i, line in enumerate(lines):
-            is_section_header = False
-            section_title = None
+        while i < len(lines):
+            line = lines[i]
 
-            # Método 1: Detectar cabeçalhos com ## (markdown padrão)
-            if line.startswith('## ') and not line.startswith('###'):
-                is_section_header = True
-                section_title = line[3:].strip()
+            # Detectar linha de separador (======)
+            if line.strip().startswith('=' * 10):
+                # Verificar se a próxima linha é o título e a seguinte é outro separador
+                if i + 2 < len(lines):
+                    potential_title = lines[i + 1].strip()
+                    next_separator = lines[i + 2].strip()
 
-            # Método 2: Detectar títulos em maiúsculas (fallback para arquivo sem ##)
-            # Linha toda em maiúsculas, sem marcadores, com pelo menos 3 caracteres
-            elif (len(line.strip()) >= 3 and
-                  line.strip().isupper() and
-                  not line.startswith('#') and
-                  not line.startswith('-') and
-                  not line.startswith('|') and
-                  not line.startswith('*')):
-                # Verificar se não é uma linha de separador
-                next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                if next_line != '---':
-                    is_section_header = True
-                    section_title = line.strip()
+                    if next_separator.startswith('=' * 10) and potential_title:
+                        # Salvar seção anterior se existir
+                        if current_section:
+                            sections.append({
+                                "title": current_section,
+                                "content": '\n'.join(current_content).strip()
+                            })
 
-            if is_section_header and section_title:
-                # Salvar seção anterior se existir
-                if current_section:
-                    sections.append({
-                        "title": current_section,
-                        "content": '\n'.join(current_content).strip()
-                    })
+                        # Iniciar nova seção
+                        current_section = potential_title
+                        current_content = []
+                        i += 3  # Pular separador, título e segundo separador
+                        continue
 
-                # Iniciar nova seção
-                current_section = section_title
-                current_content = []
-            else:
-                # Adicionar linha ao conteúdo da seção atual
-                if current_section:
-                    current_content.append(line)
+            # Adicionar linha ao conteúdo da seção atual
+            if current_section:
+                current_content.append(line)
+
+            i += 1
 
         # Adicionar última seção
         if current_section:
