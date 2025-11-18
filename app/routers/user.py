@@ -478,6 +478,27 @@ async def upload_xml_confirm(
             detail=f"Erro ao mover arquivo: {str(e)}"
         )
 
+    # Extrair chave NF-e para validação de duplicatas
+    nfe_key = None
+    if upload_data.nfe_data and upload_data.nfe_data.get('chave_acesso'):
+        nfe_key = upload_data.nfe_data['chave_acesso']
+
+        # Validar se NF-e já foi processada por este usuário
+        existing_upload = db.query(models.XMLUpload).filter(
+            models.XMLUpload.user_id == current_user.id,
+            models.XMLUpload.nfe_key == nfe_key
+        ).first()
+
+        if existing_upload:
+            # Deletar arquivo temporário
+            if permanent_path.exists():
+                permanent_path.unlink()
+
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"NF-e com chave {nfe_key} já foi processada em {existing_upload.upload_date.strftime('%d/%m/%Y %H:%M')}. ID do upload: {existing_upload.id}"
+            )
+
     # Processar XML para extrair período
     period = None
     if upload_data.nfe_data and upload_data.nfe_data.get('data_emissao'):
@@ -498,6 +519,7 @@ async def upload_xml_confirm(
         filename=upload_data.filename,
         file_path=str(permanent_path),
         period=period,
+        nfe_key=nfe_key,
         status="processed"
     )
 
@@ -514,6 +536,113 @@ async def upload_xml_confirm(
         pass
 
     return xml_upload
+
+
+@router.get("/uploads")
+async def list_uploads(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Lista todos os uploads do usuário.
+    """
+    uploads = db.query(models.XMLUpload).filter(
+        models.XMLUpload.user_id == current_user.id
+    ).order_by(models.XMLUpload.upload_date.desc()).all()
+
+    return [{
+        "id": u.id,
+        "filename": u.filename,
+        "upload_date": u.upload_date.isoformat(),
+        "period": u.period,
+        "nfe_key": u.nfe_key,
+        "status": u.status,
+        "error_message": u.error_message
+    } for u in uploads]
+
+
+@router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_upload(
+    upload_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Deleta um upload específico do usuário.
+    Remove o arquivo físico e o registro do banco.
+    """
+    import os
+
+    # Buscar upload
+    upload = db.query(models.XMLUpload).filter(
+        models.XMLUpload.id == upload_id,
+        models.XMLUpload.user_id == current_user.id
+    ).first()
+
+    if not upload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload não encontrado"
+        )
+
+    # Deletar arquivo físico se existir
+    if upload.file_path and os.path.exists(upload.file_path):
+        try:
+            os.remove(upload.file_path)
+        except Exception as e:
+            print(f"Erro ao deletar arquivo físico: {e}")
+            # Continua mesmo se falhar ao deletar arquivo
+
+    # Deletar registro do banco (cascade vai deletar reports associados)
+    db.delete(upload)
+    db.commit()
+
+    return None
+
+
+@router.patch("/uploads/{upload_id}")
+async def update_upload_period(
+    upload_id: int,
+    period: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Atualiza o período de um upload específico.
+    Formato esperado: Q1-2025, Q2-2025, Q3-2025, Q4-2025
+    """
+    import re
+
+    # Validar formato do período
+    if not re.match(r'^Q[1-4]-\d{4}$', period):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato de período inválido. Use Q1-2025, Q2-2025, Q3-2025 ou Q4-2025"
+        )
+
+    # Buscar upload
+    upload = db.query(models.XMLUpload).filter(
+        models.XMLUpload.id == upload_id,
+        models.XMLUpload.user_id == current_user.id
+    ).first()
+
+    if not upload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload não encontrado"
+        )
+
+    # Atualizar período
+    upload.period = period
+    db.commit()
+    db.refresh(upload)
+
+    return {
+        "id": upload.id,
+        "filename": upload.filename,
+        "period": upload.period,
+        "message": "Período atualizado com sucesso"
+    }
 
 
 @router.post("/upload", response_model=schemas.XMLUploadResponse, status_code=status.HTTP_201_CREATED)
@@ -912,10 +1041,11 @@ async def download_report(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Gera relatório para download (JSON formatado temporariamente, PDF futuro).
+    Gera relatório Excel para download no formato oficial MAPA.
     """
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import FileResponse
     import traceback
+    import os
 
     try:
         # Buscar XMLs processados para o período
@@ -941,15 +1071,37 @@ async def download_report(
                 detail=result.get("error", "Erro ao processar relatório")
             )
 
-        # Retornar JSON formatado (temporário - implementar PDF depois)
-        return JSONResponse(
-            content={
-                "period": report_period,
-                "total_nfes": result["total_nfes"],
-                "rows": result["rows"]
-            },
+        # Criar diretório de relatórios se não existir
+        reports_dir = os.path.join(settings.UPLOAD_DIR, f"user_{current_user.id}", "reports")
+        os.makedirs(reports_dir, exist_ok=True)
+
+        # Caminho do arquivo Excel
+        filename = f"relatorio_mapa_{report_period}.xlsx"
+        output_path = os.path.join(reports_dir, filename)
+
+        # Informações do usuário para o header do relatório
+        user_info = {
+            "company_name": current_user.company_name or current_user.full_name,
+            "cnpj": "N/A",  # TODO: Adicionar campo CNPJ ao User se necessário
+            "email": current_user.email
+        }
+
+        # Gerar Excel usando MAPAReportGenerator
+        generator = MAPAReportGenerator()
+        generator.generate(
+            user_info=user_info,
+            period=report_period,
+            rows=result["rows"],
+            output_path=output_path
+        )
+
+        # Retornar arquivo Excel para download
+        return FileResponse(
+            path=output_path,
+            filename=filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.json"
+                "Content-Disposition": f"attachment; filename={filename}"
             }
         )
     except HTTPException:
