@@ -110,7 +110,7 @@ class XMLUpload(Base):
     file_path = Column(String(1000), nullable=False)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     period = Column(String(20), nullable=True)  # Ex: "Q1-2025", "2024Q3"
-    nfe_key = Column(String(44), nullable=True, index=True)  # Chave de acesso da NF-e (44 dígitos)
+    # nfe_key = Column(String(44), nullable=True, index=True)  # DESABILITADO: Rodar migração primeiro!
 
     status = Column(String(50), default="pending")  # pending, processed, error
     error_message = Column(Text, nullable=True)
@@ -119,10 +119,10 @@ class XMLUpload(Base):
     user = relationship("User", back_populates="xml_uploads")
     report = relationship("Report", back_populates="xml_upload", uselist=False)
 
-    # Índice composto para validação de duplicatas
-    __table_args__ = (
-        Index("ix_user_nfe_key", "user_id", "nfe_key"),
-    )
+    # Índice composto para validação de duplicatas (DESABILITADO: Rodar migração primeiro!)
+    # __table_args__ = (
+    #     Index("ix_user_nfe_key", "user_id", "nfe_key"),
+    # )
 
     def __repr__(self):
         return f"<XMLUpload {self.filename} - {self.status}>"
