@@ -174,6 +174,9 @@ const Dashboard = () => {
     const fetchProposta = async () => {
       try {
         const response = await api.get('/user/proposta-comercial');
+        console.log('[PROPOSTA] Resposta da API:', response.data);
+        console.log('[PROPOSTA] Seções:', response.data?.sections);
+        console.log('[PROPOSTA] Total de seções:', response.data?.sections?.length);
         setPropostaData(response.data);
       } catch (error) {
         console.error('Erro ao buscar proposta comercial:', error);
