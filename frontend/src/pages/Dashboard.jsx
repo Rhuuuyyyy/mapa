@@ -173,7 +173,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchProposta = async () => {
       try {
-        const response = await api.get('/api/user/proposta-comercial');
+        const response = await api.get('/user/proposta-comercial');
         setPropostaData(response.data);
       } catch (error) {
         console.error('Erro ao buscar proposta comercial:', error);
