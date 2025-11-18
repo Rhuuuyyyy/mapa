@@ -177,6 +177,8 @@ const Dashboard = () => {
         console.log('[PROPOSTA] Resposta da API:', response.data);
         console.log('[PROPOSTA] Seções:', response.data?.sections);
         console.log('[PROPOSTA] Total de seções:', response.data?.sections?.length);
+        console.log('[PROPOSTA] Raw content length:', response.data?.raw_content?.length);
+        console.log('[PROPOSTA] Primeiros 500 chars:', response.data?.raw_content?.substring(0, 500));
         setPropostaData(response.data);
       } catch (error) {
         console.error('Erro ao buscar proposta comercial:', error);
