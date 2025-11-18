@@ -1099,3 +1099,76 @@ async def download_report(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno ao gerar download: {str(e)}"
         )
+
+
+# ============================================================================
+# PROPOSTA COMERCIAL
+# ============================================================================
+
+@router.get("/proposta-comercial")
+async def get_proposta_comercial(
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Retorna o conteúdo do arquivo PROPOSTA_COMERCIAL_MAPA_SAAS.md.
+    Este conteúdo é lido dinamicamente do arquivo, então qualquer alteração
+    no arquivo será refletida automaticamente no dashboard.
+    """
+    try:
+        # Caminho do arquivo (na raiz do projeto)
+        proposta_path = Path(__file__).parent.parent.parent / "PROPOSTA_COMERCIAL_MAPA_SAAS.md"
+
+        if not proposta_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Arquivo de proposta comercial não encontrado"
+            )
+
+        # Ler o conteúdo do arquivo
+        with open(proposta_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Processar o markdown para extrair seções
+        sections = []
+        current_section = None
+        current_content = []
+
+        for line in content.split('\n'):
+            # Detectar cabeçalhos de seção (## Título)
+            if line.startswith('## ') and not line.startswith('###'):
+                # Salvar seção anterior se existir
+                if current_section:
+                    sections.append({
+                        "title": current_section,
+                        "content": '\n'.join(current_content).strip()
+                    })
+
+                # Iniciar nova seção
+                current_section = line[3:].strip()  # Remove "## "
+                current_content = []
+            else:
+                # Adicionar linha ao conteúdo da seção atual
+                if current_section:
+                    current_content.append(line)
+
+        # Adicionar última seção
+        if current_section:
+            sections.append({
+                "title": current_section,
+                "content": '\n'.join(current_content).strip()
+            })
+
+        return {
+            "sections": sections,
+            "raw_content": content,
+            "last_modified": datetime.fromtimestamp(proposta_path.stat().st_mtime).isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao ler proposta comercial: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao ler proposta comercial: {str(e)}"
+        )

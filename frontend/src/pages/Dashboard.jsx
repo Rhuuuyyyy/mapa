@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import {
   LayoutDashboard,
   Users,
@@ -11,7 +12,10 @@ import {
   TrendingUp,
   Activity,
   BookOpen,
-  CheckCircle
+  CheckCircle,
+  FileText,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, trend, color = 'emerald' }) => {
@@ -44,9 +48,142 @@ const StatCard = ({ title, value, icon: Icon, trend, color = 'emerald' }) => {
   );
 };
 
+const PropostaSection = ({ title, content, index }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Função para renderizar markdown básico
+  const renderContent = (text) => {
+    if (!text) return null;
+
+    // Dividir em parágrafos
+    const paragraphs = text.split('\n\n');
+
+    return paragraphs.map((para, idx) => {
+      // Listas com marcadores
+      if (para.trim().startsWith('- ✅') || para.trim().startsWith('- ❌') || para.trim().startsWith('-')) {
+        const items = para.split('\n').filter(line => line.trim());
+        return (
+          <ul key={idx} className="list-disc list-inside space-y-2 mb-4">
+            {items.map((item, i) => (
+              <li key={i} className="text-gray-700">
+                {item.replace(/^- /, '').replace(/✅ /g, '').replace(/❌ /g, '')}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      // Títulos de subseção (###)
+      if (para.startsWith('###')) {
+        return (
+          <h4 key={idx} className="text-lg font-bold text-gray-900 mt-4 mb-2">
+            {para.replace(/^###\s*/, '')}
+          </h4>
+        );
+      }
+
+      // Blocos de código
+      if (para.includes('```')) {
+        const code = para.replace(/```[\w]*\n?/g, '');
+        return (
+          <pre key={idx} className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4">
+            <code className="text-sm text-gray-800">{code}</code>
+          </pre>
+        );
+      }
+
+      // Tabelas (básico)
+      if (para.includes('|')) {
+        const rows = para.split('\n').filter(line => line.includes('|'));
+        return (
+          <div key={idx} className="overflow-x-auto mb-4">
+            <table className="min-w-full border border-gray-300 text-sm">
+              {rows.map((row, i) => {
+                const cells = row.split('|').filter(c => c.trim());
+                const isHeader = i === 0;
+                const isSeparator = row.includes('---');
+
+                if (isSeparator) return null;
+
+                return (
+                  <tr key={i} className={isHeader ? 'bg-emerald-100' : i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                    {cells.map((cell, j) => {
+                      const Tag = isHeader ? 'th' : 'td';
+                      return (
+                        <Tag key={j} className="border border-gray-300 px-4 py-2">
+                          {cell.trim()}
+                        </Tag>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </table>
+          </div>
+        );
+      }
+
+      // Parágrafo normal
+      return (
+        <p key={idx} className="text-gray-700 mb-4 leading-relaxed">
+          {para.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+               .split(/<strong>|<\/strong>/)
+               .map((part, i) =>
+                 i % 2 === 1 ? <strong key={i} className="font-bold">{part}</strong> : part
+               )}
+        </p>
+      );
+    });
+  };
+
+  return (
+    <div className="border-b border-gray-200 last:border-b-0">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center space-x-3">
+          <span className="text-emerald-600 font-bold text-lg">{index + 1}.</span>
+          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="w-5 h-5 text-gray-500" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-gray-500" />
+        )}
+      </button>
+      {isExpanded && (
+        <div className="px-4 pb-4 animate-fade-in">
+          <div className="pl-8 pr-4">
+            {renderContent(content)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [propostaData, setPropostaData] = useState(null);
+  const [loadingProposta, setLoadingProposta] = useState(true);
+
+  // Buscar dados da proposta comercial
+  useEffect(() => {
+    const fetchProposta = async () => {
+      try {
+        const response = await api.get('/api/user/proposta-comercial');
+        setPropostaData(response.data);
+      } catch (error) {
+        console.error('Erro ao buscar proposta comercial:', error);
+      } finally {
+        setLoadingProposta(false);
+      }
+    };
+
+    fetchProposta();
+  }, []);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -251,6 +388,66 @@ const Dashboard = () => {
                   <li>• <strong>Histórico completo:</strong> Todos os uploads e relatórios ficam salvos para consulta futura</li>
                 </ul>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Detalhes - Proposta Comercial */}
+      <div className="card bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="p-3 bg-blue-600 rounded-lg">
+            <FileText className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-gray-900">Detalhes</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Proposta Comercial - MAPA SaaS v2.0
+              {propostaData?.last_modified && (
+                <span className="ml-2 text-xs text-gray-500">
+                  (Atualizado em: {new Date(propostaData.last_modified).toLocaleString('pt-BR')})
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {loadingProposta ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : propostaData?.sections ? (
+          <div className="bg-white rounded-lg border-2 border-blue-200 overflow-hidden">
+            {propostaData.sections.map((section, index) => (
+              <PropostaSection
+                key={index}
+                title={section.title}
+                content={section.content}
+                index={index}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border-2 border-gray-200 p-8 text-center">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">
+              Nenhum conteúdo disponível no momento.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 p-4 bg-white border-2 border-blue-200 rounded-lg">
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-gray-900 mb-1">Atualização Automática</h4>
+              <p className="text-sm text-gray-700">
+                Este conteúdo é carregado dinamicamente do arquivo{' '}
+                <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                  PROPOSTA_COMERCIAL_MAPA_SAAS.md
+                </code>
+                . Qualquer alteração no arquivo será refletida automaticamente aqui ao recarregar a página.
+              </p>
             </div>
           </div>
         </div>
