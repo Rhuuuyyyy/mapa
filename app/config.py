@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
 
     # CORS - Aceita string com vírgulas ou lista
-    allowed_origins: Union[str, List[str]] = "*"
+    # Inclui localhost para desenvolvimento
+    allowed_origins: Union[str, List[str]] = "http://localhost:3000,https://mapa-app-clean-8270.azurewebsites.net"
 
     # Upload
     max_upload_size: int = 10 * 1024 * 1024  # 10MB
@@ -40,25 +41,39 @@ class Settings(BaseSettings):
     def parse_allowed_origins(cls, v):
         """
         Converte ALLOWED_ORIGINS de string para lista.
+        Sempre inclui localhost:3000 para desenvolvimento.
         Aceita:
         - "*" -> ["*"]
         - "url1,url2" -> ["url1", "url2"]
         - ["url1", "url2"] -> ["url1", "url2"]
         """
+        # Lista base com localhost para desenvolvimento
+        allowed = ["http://localhost:3000"]
+
         if isinstance(v, str):
-            # Se for asterisco, retorna lista com asterisco
+            # Se for asterisco, permite todas as origens
             if v.strip() == "*":
                 return ["*"]
-            # Se contém vírgulas, divide
+            # Se contém vírgulas, divide e adiciona
             if "," in v:
-                return [origin.strip() for origin in v.split(",") if origin.strip()]
-            # Se é uma URL única, retorna lista com essa URL
-            return [v.strip()]
-        # Se já é lista, retorna como está
-        if isinstance(v, list):
-            return v
-        # Fallback
-        return ["*"]
+                origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+                allowed.extend(origins)
+            # Se é uma URL única, adiciona
+            elif v.strip():
+                allowed.append(v.strip())
+        # Se já é lista, adiciona todas
+        elif isinstance(v, list):
+            allowed.extend(v)
+
+        # Remove duplicatas mantendo ordem
+        seen = set()
+        unique_origins = []
+        for origin in allowed:
+            if origin not in seen:
+                seen.add(origin)
+                unique_origins.append(origin)
+
+        return unique_origins if unique_origins else ["*"]
 
     model_config = SettingsConfigDict(
         env_file=".env",

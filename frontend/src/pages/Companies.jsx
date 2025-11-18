@@ -11,6 +11,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { companies as companiesAPI } from '../services/api';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -24,6 +26,8 @@ const Companies = () => {
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, company: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadCompanies();
@@ -114,16 +118,30 @@ const Companies = () => {
   };
 
   const handleDelete = async (company) => {
-    if (!window.confirm(`Tem certeza que deseja excluir a empresa "${company.company_name}"?`)) {
-      return;
-    }
+    setConfirmDelete({ show: true, company });
+  };
+
+  const confirmDeleteAction = async () => {
+    const company = confirmDelete.company;
+    setConfirmDelete({ show: false, company: null });
 
     try {
       await companiesAPI.delete(company.id);
       await loadCompanies();
+      setAlertDialog({
+        show: true,
+        title: 'Empresa excluída',
+        message: `A empresa "${company.company_name}" foi excluída com sucesso.`,
+        type: 'success'
+      });
     } catch (error) {
       console.error('Erro ao excluir empresa:', error);
-      alert('Erro ao excluir empresa');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir a empresa. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -144,7 +162,7 @@ const Companies = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="btn-primary mt-4 sm:mt-0"
+          className="btn-primary mt-4 sm:mt-0 flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" />
           Nova Empresa
@@ -181,7 +199,7 @@ const Companies = () => {
             {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando sua primeira empresa'}
           </p>
           {!searchTerm && (
-            <button onClick={() => handleOpenModal()} className="btn-primary">
+            <button onClick={() => handleOpenModal()} className="btn-primary flex items-center">
               <Plus className="w-5 h-5 mr-2" />
               Cadastrar Primeira Empresa
             </button>
@@ -321,6 +339,26 @@ const Companies = () => {
           </div>
         </div>
       )}
+
+      {/* Modais customizados */}
+      <ConfirmDialog
+        isOpen={confirmDelete.show}
+        title="Confirmar exclusão"
+        message={`Tem certeza que deseja excluir a empresa "${confirmDelete.company?.company_name}"?`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ show: false, company: null })}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.show}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+      />
     </div>
   );
 };

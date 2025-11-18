@@ -187,6 +187,16 @@ export const xmlUploads = {
   delete: async (uploadId) => {
     await api.delete(`/user/uploads/${uploadId}`);
   },
+
+  getDetails: async (uploadId) => {
+    const response = await api.get(`/user/uploads/${uploadId}`);
+    return response.data;
+  },
+
+  update: async (uploadId, editData) => {
+    const response = await api.put(`/user/uploads/${uploadId}`, editData);
+    return response.data;
+  },
 };
 
 // ============================================================================

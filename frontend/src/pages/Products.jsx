@@ -12,6 +12,8 @@ import {
   Tag
 } from 'lucide-react';
 import { products as productsAPI, companies as companiesAPI } from '../services/api';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -28,6 +30,8 @@ const Products = () => {
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, product: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   const productTypes = [
     { value: 'A', label: 'A - Alimentos' },
@@ -142,16 +146,30 @@ const Products = () => {
   };
 
   const handleDelete = async (product) => {
-    if (!window.confirm(`Tem certeza que deseja excluir o produto "${product.product_name}"?`)) {
-      return;
-    }
+    setConfirmDelete({ show: true, product });
+  };
+
+  const confirmDeleteAction = async () => {
+    const product = confirmDelete.product;
+    setConfirmDelete({ show: false, product: null });
 
     try {
       await productsAPI.delete(product.id);
       await loadData();
+      setAlertDialog({
+        show: true,
+        title: 'Produto excluído',
+        message: `O produto "${product.product_name}" foi excluído com sucesso.`,
+        type: 'success'
+      });
     } catch (error) {
       console.error('Erro ao excluir produto:', error);
-      alert('Erro ao excluir produto');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o produto. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -183,7 +201,7 @@ const Products = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="btn-primary mt-4 sm:mt-0"
+          className="btn-primary mt-4 sm:mt-0 flex items-center"
           disabled={companies.length === 0}
         >
           <Plus className="w-5 h-5 mr-2" />
@@ -239,7 +257,7 @@ const Products = () => {
             {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando seu primeiro produto'}
           </p>
           {!searchTerm && companies.length > 0 && (
-            <button onClick={() => handleOpenModal()} className="btn-primary">
+            <button onClick={() => handleOpenModal()} className="btn-primary flex items-center">
               <Plus className="w-5 h-5 mr-2" />
               Cadastrar Primeiro Produto
             </button>
@@ -426,6 +444,26 @@ const Products = () => {
           </div>
         </div>
       )}
+
+      {/* Modais customizados */}
+      <ConfirmDialog
+        isOpen={confirmDelete.show}
+        title="Confirmar exclusão"
+        message={`Tem certeza que deseja excluir o produto "${confirmDelete.product?.product_name}"?`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ show: false, product: null })}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.show}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+      />
     </div>
   );
 };
