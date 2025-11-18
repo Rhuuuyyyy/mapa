@@ -1035,9 +1035,10 @@ async def download_report(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Gera relatório Excel para download no formato oficial MAPA.
+    Gera relatório em PDF para download.
     """
-    from fastapi.responses import FileResponse
+    from fastapi.responses import StreamingResponse
+    from app.utils.pdf_generator import MAPAReportPDFGenerator
     import traceback
     import os
 
@@ -1065,37 +1066,27 @@ async def download_report(
                 detail=result.get("error", "Erro ao processar relatório")
             )
 
-        # Criar diretório de relatórios se não existir
-        reports_dir = os.path.join(settings.UPLOAD_DIR, f"user_{current_user.id}", "reports")
-        os.makedirs(reports_dir, exist_ok=True)
-
-        # Caminho do arquivo Excel
-        filename = f"relatorio_mapa_{report_period}.xlsx"
-        output_path = os.path.join(reports_dir, filename)
-
-        # Informações do usuário para o header do relatório
+        # Gerar PDF
+        pdf_generator = MAPAReportPDFGenerator()
         user_info = {
-            "company_name": current_user.company_name or current_user.full_name,
-            "cnpj": "N/A",  # TODO: Adicionar campo CNPJ ao User se necessário
+            "full_name": current_user.full_name,
+            "company_name": current_user.company_name,
             "email": current_user.email
         }
 
-        # Gerar Excel usando MAPAReportGenerator
-        generator = MAPAReportGenerator()
-        generator.generate(
-            user_info=user_info,
+        pdf_buffer = pdf_generator.generate_report(
             period=report_period,
             rows=result["rows"],
-            output_path=output_path
+            user_info=user_info,
+            total_nfes=result["total_nfes"]
         )
 
-        # Retornar arquivo Excel para download
-        return FileResponse(
-            path=output_path,
-            filename=filename,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        # Retornar PDF como streaming response
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename={filename}"
+                "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.pdf"
             }
         )
     except HTTPException:
