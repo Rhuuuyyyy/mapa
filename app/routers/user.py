@@ -478,26 +478,35 @@ async def upload_xml_confirm(
             detail=f"Erro ao mover arquivo: {str(e)}"
         )
 
-    # Extrair chave NF-e para validação de duplicatas
+    # Extrair chave NF-e para validação de duplicatas (se coluna existir)
     nfe_key = None
-    if upload_data.nfe_data and upload_data.nfe_data.get('chave_acesso'):
-        nfe_key = upload_data.nfe_data['chave_acesso']
+    try:
+        if upload_data.nfe_data and upload_data.nfe_data.get('chave_acesso'):
+            nfe_key = upload_data.nfe_data['chave_acesso']
 
-        # Validar se NF-e já foi processada por este usuário
-        existing_upload = db.query(models.XMLUpload).filter(
-            models.XMLUpload.user_id == current_user.id,
-            models.XMLUpload.nfe_key == nfe_key
-        ).first()
+            # Validar se NF-e já foi processada por este usuário
+            # Só valida se a coluna nfe_key existir no banco
+            if hasattr(models.XMLUpload, 'nfe_key'):
+                existing_upload = db.query(models.XMLUpload).filter(
+                    models.XMLUpload.user_id == current_user.id,
+                    models.XMLUpload.nfe_key == nfe_key
+                ).first()
 
-        if existing_upload:
-            # Deletar arquivo temporário
-            if permanent_path.exists():
-                permanent_path.unlink()
+                if existing_upload:
+                    # Deletar arquivo temporário
+                    if permanent_path.exists():
+                        permanent_path.unlink()
 
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"NF-e com chave {nfe_key} já foi processada em {existing_upload.upload_date.strftime('%d/%m/%Y %H:%M')}. ID do upload: {existing_upload.id}"
-            )
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"NF-e com chave {nfe_key} já foi processada em {existing_upload.upload_date.strftime('%d/%m/%Y %H:%M')}. ID do upload: {existing_upload.id}"
+                    )
+    except HTTPException:
+        raise  # Re-raise se for erro de duplicata
+    except Exception as e:
+        # Se coluna não existir ainda (antes da migração), continua sem validar
+        print(f"Aviso: Validação de duplicatas ignorada (migração pendente): {e}")
+        nfe_key = None
 
     # Processar XML para extrair período
     period = None
@@ -514,14 +523,19 @@ async def upload_xml_confirm(
             print(f"Erro ao calcular período: {e}")
 
     # Criar registro no banco com dados confirmados/editados
-    xml_upload = models.XMLUpload(
-        user_id=current_user.id,
-        filename=upload_data.filename,
-        file_path=str(permanent_path),
-        period=period,
-        nfe_key=nfe_key,
-        status="processed"
-    )
+    upload_data_dict = {
+        "user_id": current_user.id,
+        "filename": upload_data.filename,
+        "file_path": str(permanent_path),
+        "period": period,
+        "status": "processed"
+    }
+
+    # Adicionar nfe_key apenas se a coluna existir (após migração)
+    if hasattr(models.XMLUpload, 'nfe_key'):
+        upload_data_dict["nfe_key"] = nfe_key
+
+    xml_upload = models.XMLUpload(**upload_data_dict)
 
     db.add(xml_upload)
     db.commit()
@@ -555,7 +569,7 @@ async def list_uploads(
         "filename": u.filename,
         "upload_date": u.upload_date.isoformat(),
         "period": u.period,
-        "nfe_key": u.nfe_key,
+        "nfe_key": getattr(u, 'nfe_key', None),  # Seguro se coluna não existir
         "status": u.status,
         "error_message": u.error_message
     } for u in uploads]
