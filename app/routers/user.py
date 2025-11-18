@@ -681,19 +681,30 @@ async def get_upload_details(
         for produto in nfe_data.get('produtos', []):
             produto_dict = produto.copy()
 
-            # Tentar encontrar match pelo código
+            # Tentar encontrar match pelo código do produto e registro MAPA
             matched_product = None
+            codigo_produto = produto.get('codigo', '')
+
+            # Buscar por product_reference (código do produto) ou product_name
             for prod in products:
-                if prod.product_code == produto.get('codigo'):
+                # Match por referência do produto
+                if prod.product_reference and prod.product_reference == codigo_produto:
+                    matched_product = prod
+                    break
+                # Match por nome similar
+                if prod.product_name and produto.get('descricao') and \
+                   prod.product_name.lower() == produto.get('descricao', '').lower():
                     matched_product = prod
                     break
 
             if matched_product:
                 produto_dict['matched_mapa_registration'] = matched_product.mapa_registration
                 produto_dict['matched_product_reference'] = matched_product.product_reference
+                produto_dict['matched_product_name'] = matched_product.product_name
             else:
                 produto_dict['matched_mapa_registration'] = None
                 produto_dict['matched_product_reference'] = None
+                produto_dict['matched_product_name'] = None
 
             produtos_com_match.append(produto_dict)
 
@@ -741,41 +752,10 @@ async def update_upload(
         )
 
     try:
-        # Atualizar produtos editados
-        produtos_editados = edit_data.get('produtos', [])
-
-        # Para cada produto editado, verificar se precisamos criar/atualizar o produto no cadastro
-        for produto in produtos_editados:
-            codigo = produto.get('codigo')
-            mapa_registration = produto.get('mapa_registration')
-            product_reference = produto.get('product_reference')
-
-            if not mapa_registration:
-                continue  # Skip produtos sem MAPA registration
-
-            # Verificar se já existe produto cadastrado com esse código
-            existing_product = db.query(models.Product).filter(
-                models.Product.user_id == current_user.id,
-                models.Product.product_code == codigo
-            ).first()
-
-            if existing_product:
-                # Atualizar produto existente
-                existing_product.mapa_registration = mapa_registration
-                if product_reference:
-                    existing_product.product_reference = product_reference
-            else:
-                # Criar novo produto
-                new_product = models.Product(
-                    user_id=current_user.id,
-                    product_code=codigo,
-                    product_name=produto.get('descricao', ''),
-                    mapa_registration=mapa_registration,
-                    product_reference=product_reference
-                )
-                db.add(new_product)
-
-        db.commit()
+        # Nota: Esta funcionalidade atualmente apenas registra a edição
+        # mas não modifica o arquivo XML original.
+        # Para editar produtos, use a tela de Produtos.
+        # A edição de uploads foi simplificada para evitar inconsistências
 
         return {
             "success": True,
