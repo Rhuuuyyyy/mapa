@@ -442,7 +442,7 @@ const UploadXML = () => {
     setEditData(null);
   };
 
-  const handleEditProductField = (index, field, value) => {
+  const handleEditProductInModal = (index, field, value) => {
     setEditData(prev => ({
       ...prev,
       produtos: prev.produtos.map((p, i) =>
@@ -1357,7 +1357,7 @@ const UploadXML = () => {
                               <input
                                 type="text"
                                 value={produto.mapa_registration}
-                                onChange={(e) => handleEditProductField(index, 'mapa_registration', e.target.value)}
+                                onChange={(e) => handleEditProductInModal(index, 'mapa_registration', e.target.value)}
                                 className="input w-full"
                                 placeholder="Ex: SP-12345/2024"
                               />
@@ -1369,7 +1369,7 @@ const UploadXML = () => {
                               <input
                                 type="text"
                                 value={produto.product_reference || ''}
-                                onChange={(e) => handleEditProductField(index, 'product_reference', e.target.value)}
+                                onChange={(e) => handleEditProductInModal(index, 'product_reference', e.target.value)}
                                 className="input w-full"
                                 placeholder="Ex: REF-001"
                               />
