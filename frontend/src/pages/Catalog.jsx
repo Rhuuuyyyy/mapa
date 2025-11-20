@@ -167,13 +167,13 @@ const Catalog = () => {
 
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-emerald-50 border-emerald-200">
+        <div className="card bg-sky-50 border-sky-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-emerald-700 font-medium">Total de Empresas</p>
-              <p className="text-3xl font-bold text-emerald-900 mt-1">{totalCompanies}</p>
+              <p className="text-sm text-sky-700 font-medium">Total de Empresas</p>
+              <p className="text-3xl font-bold text-sky-900 mt-1">{totalCompanies}</p>
             </div>
-            <Building2 className="w-12 h-12 text-emerald-600 opacity-50" />
+            <Building2 className="w-12 h-12 text-sky-600 opacity-50" />
           </div>
         </div>
 
@@ -216,7 +216,7 @@ const Catalog = () => {
           <div className="flex space-x-2">
             <button
               onClick={expandAll}
-              className="px-4 py-2 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+              className="px-4 py-2 text-sm bg-sky-50 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"
             >
               Expandir Tudo
             </button>
@@ -233,7 +233,7 @@ const Catalog = () => {
       {/* Catálogo */}
       {loading ? (
         <div className="card text-center py-12">
-          <Loader2 className="w-12 h-12 animate-spin text-emerald-600 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-sky-600 mx-auto mb-4" />
           <p className="text-gray-600">Carregando catálogo...</p>
         </div>
       ) : filteredCatalog.length === 0 ? (
@@ -258,8 +258,8 @@ const Catalog = () => {
                 className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-emerald-600" />
+                  <div className="w-12 h-12 bg-sky-100 rounded-xl flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-sky-600" />
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-gray-900 text-lg">{company.company_name}</h3>
@@ -267,7 +267,7 @@ const Catalog = () => {
                       Registro: <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">
                         {company.mapa_registration}
                       </span>
-                      <span className="ml-3 text-emerald-600 font-medium">
+                      <span className="ml-3 text-sky-600 font-medium">
                         {company.products.length} produto(s)
                       </span>
                     </p>
@@ -299,7 +299,7 @@ const Catalog = () => {
                         >
                           <div className="flex items-start space-x-3">
                             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Package className="w-5 h-5 text-emerald-600" />
+                              <Package className="w-5 h-5 text-sky-600" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-medium text-gray-900 mb-1 truncate">

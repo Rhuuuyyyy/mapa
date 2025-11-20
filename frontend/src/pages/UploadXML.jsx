@@ -435,8 +435,8 @@ const UploadXML = () => {
           <div
             className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
               dragActive
-                ? 'border-emerald-500 bg-emerald-50'
-                : 'border-gray-300 hover:border-emerald-400'
+                ? 'border-sky-500 bg-sky-50'
+                : 'border-gray-300 hover:border-sky-400'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -445,7 +445,7 @@ const UploadXML = () => {
           >
             {uploading ? (
               <div>
-                <Loader2 className="w-16 h-16 text-emerald-600 animate-spin mx-auto mb-4" />
+                <Loader2 className="w-16 h-16 text-sky-600 animate-spin mx-auto mb-4" />
                 <p className="text-lg font-semibold text-gray-900 mb-2">
                   Processando arquivo...
                 </p>
@@ -462,7 +462,7 @@ const UploadXML = () => {
                 <p className="text-sm text-gray-600 mb-4">
                   ou clique no botão abaixo para selecionar
                 </p>
-                <label className="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg cursor-pointer transition-colors">
+                <label className="inline-flex items-center px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg cursor-pointer transition-colors">
                   <FileText className="w-5 h-5 mr-2" />
                   Selecionar Arquivo XML
                   <input
@@ -496,7 +496,7 @@ const UploadXML = () => {
 
           {loadingHistory ? (
             <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-2" />
+              <Loader2 className="w-8 h-8 animate-spin text-sky-600 mx-auto mb-2" />
               <p className="text-sm text-gray-600">Carregando histórico...</p>
             </div>
           ) : groupedHistory.length === 0 ? (
@@ -509,7 +509,7 @@ const UploadXML = () => {
               {groupedHistory.map(([quarter, uploads]) => (
                 <div key={quarter}>
                   <div className="flex items-center space-x-3 mb-3">
-                    <Calendar className="w-5 h-5 text-emerald-600" />
+                    <Calendar className="w-5 h-5 text-sky-600" />
                     <h3 className="font-semibold text-gray-900">
                       {quarter.replace('Q', 'º Trimestre de ')}
                     </h3>
@@ -526,7 +526,7 @@ const UploadXML = () => {
                       >
                         <div className="flex items-center space-x-3 flex-1">
                           <FileText className={`w-5 h-5 flex-shrink-0 ${
-                            upload.status === 'processed' ? 'text-emerald-600' :
+                            upload.status === 'processed' ? 'text-sky-600' :
                             upload.status === 'error' ? 'text-red-600' :
                             'text-gray-400'
                           }`} />
@@ -542,7 +542,7 @@ const UploadXML = () => {
 
                         <div className="flex items-center space-x-2">
                           {upload.status === 'processed' && (
-                            <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                            <span className="text-xs px-2 py-1 bg-sky-100 text-sky-800 rounded-full">
                               Processado
                             </span>
                           )}
@@ -631,15 +631,15 @@ const UploadXML = () => {
         {/* Cards de Informação */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Período Trimestral */}
-          <div className="card bg-emerald-50 border-emerald-200">
+          <div className="card bg-sky-50 border-sky-200">
             <div className="flex items-center space-x-3 mb-3">
-              <Calendar className="w-6 h-6 text-emerald-600" />
-              <h3 className="font-semibold text-emerald-900">Período</h3>
+              <Calendar className="w-6 h-6 text-sky-600" />
+              <h3 className="font-semibold text-sky-900">Período</h3>
             </div>
-            <p className="text-2xl font-bold text-emerald-900">
+            <p className="text-2xl font-bold text-sky-900">
               {previewData.periodo_trimestral || 'N/A'}
             </p>
-            <p className="text-sm text-emerald-700 mt-1">
+            <p className="text-sm text-sky-700 mt-1">
               Será contabilizado no relatório deste trimestre
             </p>
           </div>
@@ -710,7 +710,7 @@ const UploadXML = () => {
         {/* Emitente */}
         <div className="card">
           <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
-            <Building2 className="w-5 h-5 mr-2 text-emerald-600" />
+            <Building2 className="w-5 h-5 mr-2 text-sky-600" />
             Emitente
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -765,7 +765,7 @@ const UploadXML = () => {
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 text-lg flex items-center">
-                <Package className="w-5 h-5 mr-2 text-emerald-600" />
+                <Package className="w-5 h-5 mr-2 text-sky-600" />
                 Produtos ({previewData.produtos_status.length})
               </h3>
               <p className="text-sm text-gray-600">
@@ -783,7 +783,7 @@ const UploadXML = () => {
                     key={index}
                     className={`p-5 rounded-xl border-2 transition-all ${
                       produtoStatus.cadastrado
-                        ? 'bg-emerald-50 border-emerald-200'
+                        ? 'bg-sky-50 border-sky-200'
                         : 'bg-red-50 border-red-200'
                     } ${isEdited ? 'ring-2 ring-blue-400' : ''}`}
                   >
@@ -791,15 +791,15 @@ const UploadXML = () => {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-2">
                         {produtoStatus.cadastrado ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                          <CheckCircle className="w-5 h-5 text-sky-600 flex-shrink-0" />
                         ) : (
                           <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                         )}
                         <div>
-                          <p className={`font-semibold text-lg ${produtoStatus.cadastrado ? 'text-emerald-900' : 'text-red-900'}`}>
+                          <p className={`font-semibold text-lg ${produtoStatus.cadastrado ? 'text-sky-900' : 'text-red-900'}`}>
                             Produto {index + 1}
                           </p>
-                          <p className={`text-sm ${produtoStatus.cadastrado ? 'text-emerald-700' : 'text-red-700'}`}>
+                          <p className={`text-sm ${produtoStatus.cadastrado ? 'text-sky-700' : 'text-red-700'}`}>
                             {produtoStatus.cadastrado ? 'Cadastrado no sistema' : 'Não cadastrado'}
                           </p>
                         </div>
@@ -1182,7 +1182,7 @@ const UploadXML = () => {
     return (
       <div className="space-y-6">
         <div className="card text-center py-12">
-          <CheckCircle className="w-20 h-20 text-emerald-600 mx-auto mb-6" />
+          <CheckCircle className="w-20 h-20 text-sky-600 mx-auto mb-6" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Upload Realizado com Sucesso!
           </h2>
@@ -1203,13 +1203,13 @@ const UploadXML = () => {
         </div>
 
         {previewData && (
-          <div className="card bg-emerald-50 border-emerald-200">
-            <h3 className="font-semibold text-emerald-900 mb-3">Resumo do Processamento</h3>
-            <div className="space-y-2 text-sm text-emerald-800">
+          <div className="card bg-sky-50 border-sky-200">
+            <h3 className="font-semibold text-sky-900 mb-3">Resumo do Processamento</h3>
+            <div className="space-y-2 text-sm text-sky-800">
               <p>✓ Período trimestral: <strong>{previewData.periodo_trimestral}</strong></p>
               <p>✓ Total de produtos: <strong>{previewData.total_produtos}</strong></p>
               <p>✓ Arquivo: <strong>{previewData.filename}</strong></p>
-              <p className="mt-4 text-emerald-700">
+              <p className="mt-4 text-sky-700">
                 Os dados foram salvos e serão incluídos no relatório trimestral correspondente.
               </p>
             </div>

@@ -274,7 +274,7 @@ const Users = () => {
       {/* Lista de Usuários */}
       {loading ? (
         <div className="card text-center py-12">
-          <Loader2 className="w-12 h-12 animate-spin text-emerald-600 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-sky-600 mx-auto mb-4" />
           <p className="text-gray-600">Carregando usuários...</p>
         </div>
       ) : filteredUsers.length === 0 ? (
@@ -310,14 +310,14 @@ const Users = () => {
                   <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                          <Mail className="w-5 h-5 text-emerald-600" />
+                        <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
+                          <Mail className="w-5 h-5 text-sky-600" />
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
                             {user.full_name}
                             {user.id === currentUser?.id && (
-                              <span className="ml-2 text-xs text-emerald-600 font-medium">(Você)</span>
+                              <span className="ml-2 text-xs text-sky-600 font-medium">(Você)</span>
                             )}
                           </p>
                           <p className="text-sm text-gray-600">{user.email}</p>
@@ -343,10 +343,10 @@ const Users = () => {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleOpenModal(user)}
-                          className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-2 hover:bg-sky-50 rounded-lg transition-colors"
                           title="Editar"
                         >
-                          <Edit2 className="w-4 h-4 text-emerald-600" />
+                          <Edit2 className="w-4 h-4 text-sky-600" />
                         </button>
                         <button
                           onClick={() => handleDelete(user)}
@@ -471,7 +471,7 @@ const Users = () => {
                   name="is_admin"
                   checked={formData.is_admin}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                  className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
                 />
                 <label htmlFor="is_admin" className="flex-1 cursor-pointer">
                   <div className="flex items-center space-x-2">
