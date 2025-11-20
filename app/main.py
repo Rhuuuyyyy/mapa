@@ -106,16 +106,6 @@ async def shutdown_event():
 # ROOT ENDPOINTS
 # ============================================================================
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {
-        "app": settings.app_name,
-        "version": settings.app_version,
-        "status": "running"
-    }
-
-
 @app.get("/health")
 async def health_check():
     """
@@ -126,6 +116,18 @@ async def health_check():
         "status": "healthy",
         "app": settings.app_name,
         "version": settings.app_version
+    }
+
+
+@app.get("/api")
+async def api_root():
+    """API info endpoint"""
+    return {
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "status": "running",
+        "docs": "/api/docs",
+        "redoc": "/api/redoc"
     }
 
 
