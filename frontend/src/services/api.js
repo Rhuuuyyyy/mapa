@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mapa-app-clean-8270.azurewebsites.net/api';
+// Em produção (modo build), usa path relativo. Em dev, usa localhost ou variável de ambiente.
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '/api' : 'https://mapa-app-clean-8270.azurewebsites.net/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
