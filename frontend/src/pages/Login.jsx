@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, Mail, AlertCircle, Loader2, Leaf, FileText, TrendingUp, CheckCircle } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader2, Cloud, FileText, TrendingUp, CheckCircle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -40,25 +40,25 @@ const Login = () => {
   return (
     <div className="min-h-screen flex">
       {/* Lado esquerdo - Ilustração/Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-600 to-emerald-800 relative">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-600 to-violet-700 relative">
         {/* Background decorativo */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+          <div className="absolute top-20 left-10 w-72 h-72 bg-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         </div>
 
         {/* Conteúdo */}
         <div className="relative z-10 flex flex-col justify-center items-start px-16 py-12 w-full">
           <div className="mb-8">
             <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-              <Leaf className="w-10 h-10 text-white" />
+              <Cloud className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-5xl font-bold text-white mb-4">MAPA SaaS</h1>
-            <p className="text-2xl text-emerald-100 mb-2">
-              Sistema de Automação
+            <h1 className="text-5xl font-bold text-white mb-4">SoloCloud</h1>
+            <p className="text-2xl text-sky-100 mb-2">
+              Automação Inteligente
             </p>
-            <p className="text-lg text-emerald-200">
-              Relatórios MAPA simplificados
+            <p className="text-lg text-sky-200">
+              Gestão de relatórios na nuvem
             </p>
           </div>
 
@@ -69,7 +69,7 @@ const Login = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-white mb-1">Processamento Automático</h3>
-                <p className="text-sm text-emerald-100">Upload e análise de XMLs de NF-e em segundos</p>
+                <p className="text-sm text-sky-100">Upload e análise de XMLs de NF-e em segundos</p>
               </div>
             </div>
 
@@ -78,8 +78,8 @@ const Login = () => {
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white mb-1">Relatórios Trimestrais</h3>
-                <p className="text-sm text-emerald-100">Geração automática no formato oficial MAPA</p>
+                <h3 className="font-semibold text-white mb-1">Relatórios Automatizados</h3>
+                <p className="text-sm text-sky-100">Geração automática e inteligente de documentos</p>
               </div>
             </div>
 
@@ -88,16 +88,16 @@ const Login = () => {
                 <CheckCircle className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white mb-1">Gestão Inteligente</h3>
-                <p className="text-sm text-emerald-100">Catálogo hierárquico de empresas e produtos</p>
+                <h3 className="font-semibold text-white mb-1">Gestão em Nuvem</h3>
+                <p className="text-sm text-sky-100">Organize e gerencie seus dados de qualquer lugar</p>
               </div>
             </div>
           </div>
 
           <div className="mt-auto pt-12">
-            <div className="flex items-center space-x-2 text-emerald-100 text-sm">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span>Sistema 100% online e seguro</span>
+            <div className="flex items-center space-x-2 text-sky-100 text-sm">
+              <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse"></div>
+              <span>Plataforma 100% cloud e segura</span>
             </div>
           </div>
         </div>
@@ -109,14 +109,14 @@ const Login = () => {
           {/* Logo mobile */}
           <div className="lg:hidden flex justify-center mb-8">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center">
-                <Leaf className="w-7 h-7 text-white" />
+              <div className="w-12 h-12 bg-sky-600 rounded-xl flex items-center justify-center">
+                <Cloud className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-gradient">MAPA SaaS</h1>
+              <h1 className="text-3xl font-bold text-gradient">SoloCloud</h1>
             </div>
           </div>
 
-          <div className="card shadow-emerald-lg">
+          <div className="card shadow-cloud-lg">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Bem-vindo de volta!</h2>
               <p className="text-gray-600">Entre com suas credenciais para continuar</p>
@@ -182,7 +182,7 @@ const Login = () => {
                     id="remember"
                     name="remember"
                     type="checkbox"
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
+                    className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded cursor-pointer"
                   />
                   <label htmlFor="remember" className="ml-2 block text-sm text-gray-700 cursor-pointer">
                     Lembrar-me
@@ -190,7 +190,7 @@ const Login = () => {
                 </div>
 
                 <div className="text-sm">
-                  <button type="button" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
+                  <button type="button" className="font-medium text-sky-600 hover:text-sky-500 transition-colors">
                     Esqueceu a senha?
                   </button>
                 </div>
@@ -215,7 +215,7 @@ const Login = () => {
             <div className="mt-6 text-center text-sm text-gray-600">
               <p>
                 Não tem uma conta?{' '}
-                <button type="button" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
+                <button type="button" className="font-medium text-sky-600 hover:text-sky-500 transition-colors">
                   Entre em contato com o administrador
                 </button>
               </p>
@@ -223,7 +223,7 @@ const Login = () => {
           </div>
 
           <p className="mt-8 text-center text-xs text-gray-500">
-            © 2025 MAPA SaaS. Todos os direitos reservados.
+            © 2025 SoloCloud. Todos os direitos reservados.
           </p>
         </div>
       </div>

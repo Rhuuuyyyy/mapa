@@ -186,7 +186,7 @@ const Companies = () => {
       {/* Lista de Empresas */}
       {loading ? (
         <div className="card text-center py-12">
-          <Loader2 className="w-12 h-12 animate-spin text-emerald-600 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-sky-600 mx-auto mb-4" />
           <p className="text-gray-600">Carregando empresas...</p>
         </div>
       ) : filteredCompanies.length === 0 ? (
@@ -210,16 +210,16 @@ const Companies = () => {
           {filteredCompanies.map((company) => (
             <div key={company.id} className="card-hover group">
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-emerald-600" />
+                <div className="w-12 h-12 bg-sky-100 rounded-xl flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-sky-600" />
                 </div>
                 <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleOpenModal(company)}
-                    className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
+                    className="p-2 hover:bg-sky-50 rounded-lg transition-colors"
                     title="Editar"
                   >
-                    <Edit2 className="w-4 h-4 text-emerald-600" />
+                    <Edit2 className="w-4 h-4 text-sky-600" />
                   </button>
                   <button
                     onClick={() => handleDelete(company)}
