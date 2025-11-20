@@ -24,6 +24,80 @@ router = APIRouter()
 
 
 # ============================================================================
+# USER PROFILE & SETTINGS
+# ============================================================================
+
+@router.get("/profile", response_model=schemas.UserResponse)
+async def get_profile(
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Retorna dados do perfil do usuário logado.
+    """
+    return current_user
+
+
+@router.patch("/profile", response_model=schemas.UserResponse)
+async def update_profile(
+    profile_data: schemas.UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Atualiza dados do perfil do usuário logado.
+    """
+    # Atualizar apenas campos fornecidos
+    if profile_data.full_name is not None:
+        current_user.full_name = profile_data.full_name.strip()
+
+    if profile_data.company_name is not None:
+        current_user.company_name = profile_data.company_name.strip() if profile_data.company_name else None
+
+    db.commit()
+    db.refresh(current_user)
+
+    return current_user
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    password_data: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Altera a senha do usuário logado.
+    """
+    # Verificar senha atual
+    if not auth.verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Senha atual incorreta"
+        )
+
+    # Validar força da nova senha
+    is_valid, message = auth.validate_password_strength(password_data.new_password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    # Verificar se nova senha é diferente da atual
+    if auth.verify_password(password_data.new_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nova senha deve ser diferente da senha atual"
+        )
+
+    # Atualizar senha
+    current_user.hashed_password = auth.get_password_hash(password_data.new_password)
+    db.commit()
+
+    return {"message": "Senha alterada com sucesso"}
+
+
+# ============================================================================
 # CATALOG MANAGEMENT
 # ============================================================================
 

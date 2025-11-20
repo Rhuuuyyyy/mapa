@@ -63,6 +63,27 @@ export const auth = {
 };
 
 // ============================================================================
+// USER PROFILE
+// ============================================================================
+
+export const userProfile = {
+  getProfile: async () => {
+    const response = await api.get('/user/profile');
+    return response.data;
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await api.patch('/user/profile', profileData);
+    return response.data;
+  },
+
+  changePassword: async (passwordData) => {
+    const response = await api.post('/user/change-password', passwordData);
+    return response.data;
+  },
+};
+
+// ============================================================================
 // USERS
 // ============================================================================
 
