@@ -15,7 +15,8 @@ import {
   X,
   Cloud,
   ChevronDown,
-  User
+  User,
+  Sprout
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -52,8 +53,9 @@ const Layout = ({ children }) => {
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
             <Link to="/dashboard" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-solocloud rounded-lg flex items-center justify-center">
-                <Cloud className="w-6 h-6 text-white" />
+              <div className="relative w-10 h-10 bg-gradient-solocloud rounded-lg flex items-center justify-center">
+                <Sprout className="w-4 h-4 text-white absolute bottom-1 left-1" />
+                <Cloud className="w-5 h-5 text-white absolute top-1 right-1" />
               </div>
               <span className="text-xl font-bold text-gradient">SoloCloud</span>
             </Link>
@@ -77,11 +79,11 @@ const Layout = ({ children }) => {
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                       isActive
-                        ? 'bg-sky-50 text-sky-700 font-medium'
+                        ? 'bg-gradient-to-r from-emerald-50 to-sky-50 text-emerald-700 font-medium'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <item.icon className={`w-5 h-5 ${isActive ? 'text-sky-600' : 'text-gray-400'}`} />
+                    <item.icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
                     <span>{item.name}</span>
                   </Link>
                 );
@@ -102,8 +104,8 @@ const Layout = ({ children }) => {
           {/* User Section */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center space-x-3 px-3 py-2">
-              <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
-                <span className="text-sky-700 font-semibold">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-sky-100 rounded-full flex items-center justify-center ring-2 ring-emerald-200">
+                <span className="text-emerald-700 font-semibold">
                   {user?.full_name?.charAt(0).toUpperCase()}
                 </span>
               </div>
@@ -145,7 +147,7 @@ const Layout = ({ children }) => {
 
             <div className="flex items-center space-x-4">
               {user?.is_admin && (
-                <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800">
+                <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-100 to-sky-100 text-emerald-800 ring-1 ring-emerald-200">
                   Administrador
                 </span>
               )}
@@ -155,8 +157,8 @@ const Layout = ({ children }) => {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg p-2 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-sky-700" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-100 to-sky-100 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-emerald-700" />
                   </div>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>

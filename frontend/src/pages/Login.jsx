@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, Mail, AlertCircle, Loader2, Cloud, FileText, TrendingUp, CheckCircle } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader2, Cloud, FileText, TrendingUp, CheckCircle, Sprout } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -40,64 +40,70 @@ const Login = () => {
   return (
     <div className="min-h-screen flex">
       {/* Lado esquerdo - Ilustração/Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-600 to-violet-700 relative">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-600 via-sky-600 to-violet-700 relative">
         {/* Background decorativo */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+          <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+          <div className="absolute top-40 right-20 w-80 h-80 bg-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
         </div>
 
         {/* Conteúdo */}
         <div className="relative z-10 flex flex-col justify-center items-start px-16 py-12 w-full">
           <div className="mb-8">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-              <Cloud className="w-10 h-10 text-white" />
+            <div className="relative w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
+              <Sprout className="w-6 h-6 text-emerald-200 absolute bottom-2 left-2" />
+              <Cloud className="w-8 h-8 text-white absolute top-2 right-2" />
             </div>
             <h1 className="text-5xl font-bold text-white mb-4">SoloCloud</h1>
-            <p className="text-2xl text-sky-100 mb-2">
-              Automação Inteligente
+            <p className="text-2xl text-emerald-100 mb-2">
+              Da Terra à Nuvem
             </p>
             <p className="text-lg text-sky-200">
-              Gestão de relatórios na nuvem
+              Automação completa de relatórios
             </p>
           </div>
 
           <div className="space-y-6 text-white/90 mt-8">
             <div className="flex items-start space-x-4">
-              <div className="mt-1 bg-white/20 p-2 rounded-lg">
-                <FileText className="w-5 h-5 text-white" />
+              <div className="mt-1 bg-gradient-to-br from-emerald-500/30 to-sky-500/30 backdrop-blur-sm p-2 rounded-lg">
+                <Sprout className="w-5 h-5 text-emerald-200" />
               </div>
               <div>
-                <h3 className="font-semibold text-white mb-1">Processamento Automático</h3>
-                <p className="text-sm text-sky-100">Upload e análise de XMLs de NF-e em segundos</p>
+                <h3 className="font-semibold text-white mb-1">Base Sólida</h3>
+                <p className="text-sm text-emerald-100">Upload e organização de dados estruturados</p>
               </div>
             </div>
 
             <div className="flex items-start space-x-4">
-              <div className="mt-1 bg-white/20 p-2 rounded-lg">
+              <div className="mt-1 bg-gradient-to-br from-sky-500/30 to-violet-500/30 backdrop-blur-sm p-2 rounded-lg">
+                <Cloud className="w-5 h-5 text-sky-200" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">Processamento na Nuvem</h3>
+                <p className="text-sm text-sky-100">Análise e geração automática em tempo real</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="mt-1 bg-gradient-to-br from-emerald-500/30 to-violet-500/30 backdrop-blur-sm p-2 rounded-lg">
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white mb-1">Relatórios Automatizados</h3>
-                <p className="text-sm text-sky-100">Geração automática e inteligente de documentos</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4">
-              <div className="mt-1 bg-white/20 p-2 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-1">Gestão em Nuvem</h3>
-                <p className="text-sm text-sky-100">Organize e gerencie seus dados de qualquer lugar</p>
+                <h3 className="font-semibold text-white mb-1">Relatórios Inteligentes</h3>
+                <p className="text-sm text-violet-100">Documentos completos no formato oficial</p>
               </div>
             </div>
           </div>
 
           <div className="mt-auto pt-12">
-            <div className="flex items-center space-x-2 text-sky-100 text-sm">
-              <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse"></div>
-              <span>Plataforma 100% cloud e segura</span>
+            <div className="flex items-center space-x-2 text-white/90 text-sm">
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-sky-400 rounded-full animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+              </div>
+              <span>Solo + Cloud = Automação Total</span>
             </div>
           </div>
         </div>
@@ -109,14 +115,15 @@ const Login = () => {
           {/* Logo mobile */}
           <div className="lg:hidden flex justify-center mb-8">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-sky-600 rounded-xl flex items-center justify-center">
-                <Cloud className="w-7 h-7 text-white" />
+              <div className="relative w-12 h-12 bg-gradient-solocloud rounded-xl flex items-center justify-center">
+                <Sprout className="w-5 h-5 text-white absolute bottom-1 left-1" />
+                <Cloud className="w-6 h-6 text-white absolute top-1 right-1" />
               </div>
               <h1 className="text-3xl font-bold text-gradient">SoloCloud</h1>
             </div>
           </div>
 
-          <div className="card shadow-cloud-lg">
+          <div className="card shadow-solocloud">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Bem-vindo de volta!</h2>
               <p className="text-gray-600">Entre com suas credenciais para continuar</p>
@@ -182,7 +189,7 @@ const Login = () => {
                     id="remember"
                     name="remember"
                     type="checkbox"
-                    className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded cursor-pointer"
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
                   />
                   <label htmlFor="remember" className="ml-2 block text-sm text-gray-700 cursor-pointer">
                     Lembrar-me
@@ -190,7 +197,7 @@ const Login = () => {
                 </div>
 
                 <div className="text-sm">
-                  <button type="button" className="font-medium text-sky-600 hover:text-sky-500 transition-colors">
+                  <button type="button" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
                     Esqueceu a senha?
                   </button>
                 </div>
@@ -215,7 +222,7 @@ const Login = () => {
             <div className="mt-6 text-center text-sm text-gray-600">
               <p>
                 Não tem uma conta?{' '}
-                <button type="button" className="font-medium text-sky-600 hover:text-sky-500 transition-colors">
+                <button type="button" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
                   Entre em contato com o administrador
                 </button>
               </p>
