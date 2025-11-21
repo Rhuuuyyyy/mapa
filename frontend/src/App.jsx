@@ -11,6 +11,7 @@ import Reports from './pages/Reports';
 import Catalog from './pages/Catalog';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -145,6 +146,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />
