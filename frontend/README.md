@@ -1,38 +1,62 @@
-# MAPA SaaS Frontend
+# SoloCloud Frontend
 
-Frontend moderno em React com tema verde esmeralda para o sistema MAPA SaaS.
+Frontend React moderno para o sistema SoloCloud - "Da Terra à Nuvem"
 
-## 🎨 Características
+## Tecnologias
 
-- ✅ **Design Moderno**: Interface limpa com tema verde esmeralda
-- ✅ **Responsivo**: Funciona perfeitamente em desktop, tablet e mobile
-- ✅ **Autenticação JWT**: Sistema seguro de login
-- ✅ **Dashboard Interativo**: Cards estatísticos e ações rápidas
-- ✅ **Sidebar Navegável**: Menu lateral com todos os módulos
-- ✅ **Tailwind CSS**: Estilização moderna e customizável
-- ✅ **Lucide Icons**: Ícones bonitos e consistentes
+- **React 18** - Framework UI
+- **Vite** - Build tool ultra-rápido
+- **React Router v6** - Roteamento SPA
+- **Tailwind CSS** - Estilização utility-first
+- **Axios** - Cliente HTTP
+- **Lucide React** - Biblioteca de ícones
 
-## 🚀 Como Rodar
+## Estrutura
 
-### Pré-requisitos
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   └── Layout.jsx          # Layout principal (sidebar + navbar)
+│   ├── contexts/
+│   │   └── AuthContext.jsx     # Contexto de autenticação
+│   ├── pages/
+│   │   ├── Login.jsx           # Página de login
+│   │   ├── Dashboard.jsx       # Dashboard com estatísticas reais
+│   │   ├── Profile.jsx         # Meu Perfil (estatísticas e atividades)
+│   │   ├── Settings.jsx        # Configurações (perfil e senha)
+│   │   ├── Companies.jsx       # CRUD de empresas
+│   │   ├── Products.jsx        # CRUD de produtos
+│   │   ├── UploadXML.jsx       # Upload e preview de XMLs
+│   │   ├── Reports.jsx         # Geração e download de relatórios
+│   │   ├── Catalog.jsx         # Visualização do catálogo
+│   │   └── Users.jsx           # Gestão de usuários (admin only)
+│   ├── services/
+│   │   └── api.js              # Cliente API (Axios com interceptors)
+│   ├── App.jsx                 # Rotas da aplicação
+│   ├── main.jsx                # Entry point
+│   └── index.css               # Estilos globais + Tailwind
+├── public/
+│   └── solocloud.svg           # Favicon (logo SoloCloud)
+├── index.html                  # HTML template
+├── tailwind.config.js          # Configuração Tailwind
+├── vite.config.js              # Configuração Vite
+└── package.json                # Dependências
+```
 
-- Node.js 18+ instalado
-- Backend MAPA SaaS rodando em: https://mapa-app-clean-8270.azurewebsites.net
+## Como Rodar
 
-### Instalação
+### Desenvolvimento
 
 ```bash
-# 1. Entre na pasta do frontend
-cd /home/user/mapa/frontend
-
-# 2. Instale as dependências
+# Instalar dependências
 npm install
 
-# 3. Inicie o servidor de desenvolvimento
+# Iniciar servidor de desenvolvimento
 npm run dev
 ```
 
-O frontend vai rodar em: **http://localhost:3000**
+Acesse: http://localhost:3000
 
 ### Build para Produção
 
@@ -40,95 +64,105 @@ O frontend vai rodar em: **http://localhost:3000**
 npm run build
 ```
 
-Os arquivos de produção ficarão em `dist/`
+Os arquivos ficam em `dist/` e são servidos pelo FastAPI em produção.
 
-## 🔐 Credenciais de Teste
+## Identidade Visual
 
-Use as credenciais que você criou:
-- **Email**: rhyan.hdr@gmail.com
-- **Senha**: 06080220@Rhyan
+### Cores do Tema SoloCloud
 
-## 📁 Estrutura
+| Cor | Hex | Variável Tailwind | Significado |
+|-----|-----|-------------------|-------------|
+| Emerald | #10b981 | `emerald-500` | SOLO (terra, agricultura) |
+| Sky | #0ea5e9 | `sky-500` | CLOUD (nuvem, tecnologia) |
+| Violet | #a855f7 | `violet-500` | TECH (inovação, premium) |
 
+### Classes CSS Personalizadas
+
+```css
+/* Botões */
+.btn-primary    /* Gradiente emerald→sky */
+.btn-secondary  /* Outline emerald */
+.btn-cloud      /* Azul sólido (sky) */
+.btn-solo       /* Verde sólido (emerald) */
+
+/* Cards e Inputs */
+.card           /* Card branco com sombra */
+.card-hover     /* Card com hover effect */
+.input-field    /* Input estilizado */
+
+/* Badges */
+.badge-solo     /* Badge verde (emerald) */
+.badge-cloud    /* Badge azul (sky) */
+
+/* Gradientes de texto */
+.text-gradient  /* Texto com gradiente tri-color */
 ```
-frontend/
-├── src/
-│   ├── components/      # Componentes reutilizáveis
-│   │   └── Layout.jsx   # Layout com sidebar e navbar
-│   ├── contexts/        # Context API
-│   │   └── AuthContext.jsx  # Gerenciamento de autenticação
-│   ├── pages/           # Páginas da aplicação
-│   │   ├── Login.jsx    # Página de login
-│   │   └── Dashboard.jsx # Dashboard principal
-│   ├── services/        # Serviços de API
-│   │   └── api.js       # Integração com backend
-│   ├── App.jsx          # Componente raiz
-│   ├── main.jsx         # Entry point
-│   └── index.css        # Estilos globais
-├── public/              # Arquivos estáticos
-├── index.html           # HTML principal
-├── package.json         # Dependências
-├── vite.config.js       # Configuração Vite
-└── tailwind.config.js   # Configuração Tailwind
+
+### Gradientes
+
+```jsx
+// Gradiente principal (tri-color)
+className="bg-gradient-to-r from-emerald-600 via-sky-600 to-violet-700"
+
+// Gradiente alternativo
+className="bg-gradient-solocloud"
 ```
 
-## 🎨 Tema de Cores
+## Páginas Implementadas
 
-O tema verde esmeralda está configurado no `tailwind.config.js`:
+| Página | Rota | Descrição |
+|--------|------|-----------|
+| Login | `/login` | Autenticação com "Lembrar-me" |
+| Dashboard | `/dashboard` | Estatísticas reais + atividades |
+| Meu Perfil | `/profile` | Stats do usuário + atividades |
+| Configurações | `/settings` | Editar perfil + alterar senha |
+| Empresas | `/companies` | CRUD de empresas |
+| Produtos | `/products` | CRUD de produtos |
+| Upload XML | `/upload` | Upload com preview |
+| Relatórios | `/reports` | Geração e download |
+| Catálogo | `/catalog` | Visualização completa |
+| Usuários | `/users` | Admin only - CRUD usuários |
 
-- **Primary**: #10b981 (Verde Esmeralda)
-- **Primary Dark**: #047857
-- **Primary Light**: #34d399
+## Autenticação
 
-## 🔧 Tecnologias
+O sistema usa JWT armazenado no localStorage:
 
-- **React 18** - Framework UI
-- **Vite** - Build tool
-- **React Router** - Roteamento
-- **Tailwind CSS** - Estilização
-- **Axios** - HTTP client
-- **Lucide React** - Ícones
+```javascript
+// Login
+localStorage.setItem('token', token);
+localStorage.setItem('user', JSON.stringify(user));
 
-## 📱 Funcionalidades Disponíveis
+// Logout
+localStorage.removeItem('token');
+localStorage.removeItem('user');
 
-### Implementadas:
-- ✅ Login com autenticação JWT
-- ✅ Dashboard com estatísticas
-- ✅ Sidebar navegável
-- ✅ Proteção de rotas
-- ✅ Logout
-- ✅ Design responsivo
+// Axios interceptor adiciona automaticamente
+headers: { Authorization: `Bearer ${token}` }
+```
 
-### Em Desenvolvimento:
-- 🔄 Upload de XMLs
-- 🔄 Gestão de Empresas
-- 🔄 Gestão de Produtos
-- 🔄 Geração de Relatórios
-- 🔄 Visualização de Catálogo
-- 🔄 Gestão de Usuários (Admin)
+### Funcionalidade "Lembrar-me"
 
-## 🌐 API
+Quando marcado, o email é salvo em `solocloud_remember_email` e preenchido automaticamente no próximo acesso.
 
-O frontend se conecta automaticamente com a API em:
-`https://mapa-app-clean-8270.azurewebsites.net/api`
+## API
 
-A configuração está em `src/services/api.js`
+O frontend se conecta ao backend:
 
-## 💡 Dicas
+```javascript
+// Produção (build)
+const API_BASE_URL = '/api';
 
-1. **Hot Reload**: O Vite atualiza automaticamente quando você edita arquivos
-2. **Console**: Abra o DevTools (F12) para ver logs e debug
-3. **Token**: O token JWT é salvo no localStorage automaticamente
-4. **Rotas**: Use `/dashboard`, `/upload`, `/companies`, etc.
+// Desenvolvimento
+const API_BASE_URL = 'https://mapa-app-clean-8270.azurewebsites.net/api';
+```
 
-## 🎯 Próximos Passos
+Configurado em `src/services/api.js`
 
-1. **Implementar páginas completas** para cada módulo
-2. **Adicionar formulários** de criação/edição
-3. **Implementar upload** de arquivos XML
-4. **Adicionar gráficos** no dashboard
-5. **Deploy** para produção (Azure Static Web Apps, Vercel, etc.)
+## Contato
+
+Links na página de login abrem email para:
+- **Administrador**: rhyan.hdr@gmail.com
 
 ---
 
-**Desenvolvido com** ❤️ **e** 🟢 **verde esmeralda**
+**SoloCloud** - Da Terra à Nuvem

@@ -1,322 +1,286 @@
-# MAPA SaaS v2.0.0
+# SoloCloud v2.0.0
 
-Sistema de Automação de Relatórios MAPA (Ministério da Agricultura, Pecuária e Abastecimento)
-
-## 🚀 Status do Deploy
-
-✅ **APLICAÇÃO EM PRODUÇÃO** - Azure App Service
-🌐 **URL**: https://mapa-app-clean-8270.azurewebsites.net
-📚 **API Docs**: https://mapa-app-clean-8270.azurewebsites.net/docs
-🔍 **Health**: https://mapa-app-clean-8270.azurewebsites.net/health
-
-**Deploy**: Automático via GitHub Actions → Branch `main`
-**Infraestrutura**: Azure App Service + PostgreSQL Flexible Server
-**Última atualização**: 2025-11-16
-
-📖 **Guias rápidos**:
-- ⭐ [CRIAR_ADMIN_FACIL.md](CRIAR_ADMIN_FACIL.md) - **MAIS FÁCIL**: Criar admin pelo navegador (Swagger)
-- [DEPLOY_SUCESSO.md](DEPLOY_SUCESSO.md) - Detalhes do deploy concluído
-- [CRIAR_ADMIN.md](CRIAR_ADMIN.md) - Métodos alternativos para criar admin
+**Da Terra à Nuvem** - Sistema de Automação de Relatórios para o Agronegócio
 
 ## Sobre o Projeto
 
-MAPA SaaS é uma aplicação web desenvolvida para automatizar o processo de geração de relatórios trimestrais MAPA. O sistema permite que empresas:
+SoloCloud é uma plataforma SaaS desenvolvida para automatizar a geração de relatórios trimestrais MAPA (Ministério da Agricultura, Pecuária e Abastecimento). O sistema permite que empresas do setor agrícola:
 
 - Façam upload de XMLs de NF-e (Notas Fiscais Eletrônicas)
 - Cadastrem empresas e produtos em um catálogo hierárquico
 - Gerem automaticamente relatórios Excel no formato oficial MAPA
 - Validem dados e identifiquem itens faltantes antes da geração
 
-## Funcionalidades Principais
+## Status do Deploy
 
-### Autenticação
-- Login JWT com tokens seguros
-- Dois níveis de acesso: Admin e User
-- Validação de senha forte (12+ caracteres)
-- Rate limiting (5 tentativas/minuto)
+| Item | Status |
+|------|--------|
+| **Aplicação** | Em Produção |
+| **URL** | https://mapa-app-clean-8270.azurewebsites.net |
+| **API Docs** | https://mapa-app-clean-8270.azurewebsites.net/docs |
+| **Health** | https://mapa-app-clean-8270.azurewebsites.net/health |
+| **Deploy** | Automático via GitHub Actions (branch `main`) |
+| **Infraestrutura** | Azure App Service + PostgreSQL Flexible Server |
 
-### Upload e Processamento
-- Upload de XMLs e PDFs de NF-e
-- Validação multi-camada de segurança
-- Extração automática de dados (emitente, destinatário, produtos)
-- Processamento de nutrientes e registros MAPA
+## Stack Tecnológica
+
+### Backend
+- **Framework**: FastAPI (Python 3.11)
+- **ORM**: SQLAlchemy 2.0
+- **Banco de Dados**: PostgreSQL 14+
+- **Autenticação**: JWT (python-jose) + bcrypt
+- **Rate Limiting**: slowapi
+- **Processamento**: lxml, pdfplumber, pandas, openpyxl
+
+### Frontend
+- **Framework**: React 18 + Vite
+- **Estilização**: Tailwind CSS
+- **Roteamento**: React Router v6
+- **HTTP Client**: Axios
+- **Ícones**: Lucide React
+
+### Infraestrutura
+- **Cloud**: Microsoft Azure
+- **App Service**: Linux B1
+- **Database**: PostgreSQL Flexible Server
+- **CI/CD**: GitHub Actions
+
+## Arquitetura do Projeto
+
+```
+solocloud/
+├── app/                          # Backend FastAPI
+│   ├── main.py                   # Aplicação principal + serve React
+│   ├── config.py                 # Configurações (Pydantic Settings)
+│   ├── database.py               # SQLAlchemy engine e sessão
+│   ├── models.py                 # Modelos ORM (User, Company, Product, etc)
+│   ├── schemas.py                # Schemas Pydantic (validação)
+│   ├── auth.py                   # Autenticação JWT + password hashing
+│   ├── routers/
+│   │   ├── admin.py              # Endpoints administrativos
+│   │   └── user.py               # Endpoints do usuário
+│   └── utils/
+│       ├── validators.py         # Validação de arquivos
+│       ├── nfe_processor.py      # Processamento de NF-e
+│       ├── mapa_processor.py     # Matching com catálogo
+│       └── report_generator.py   # Geração de relatórios Excel
+│
+├── frontend/                     # Frontend React
+│   ├── src/
+│   │   ├── components/           # Componentes reutilizáveis
+│   │   │   └── Layout.jsx        # Layout principal com sidebar
+│   │   ├── contexts/
+│   │   │   └── AuthContext.jsx   # Contexto de autenticação
+│   │   ├── pages/                # Páginas da aplicação
+│   │   │   ├── Login.jsx         # Página de login
+│   │   │   ├── Dashboard.jsx     # Dashboard com estatísticas
+│   │   │   ├── Profile.jsx       # Meu Perfil
+│   │   │   ├── Settings.jsx      # Configurações
+│   │   │   ├── Companies.jsx     # Gerenciar empresas
+│   │   │   ├── Products.jsx      # Gerenciar produtos
+│   │   │   ├── UploadXML.jsx     # Upload de XMLs
+│   │   │   ├── Reports.jsx       # Relatórios
+│   │   │   ├── Catalog.jsx       # Catálogo completo
+│   │   │   └── Users.jsx         # Gerenciar usuários (admin)
+│   │   ├── services/
+│   │   │   └── api.js            # Cliente API (Axios)
+│   │   ├── App.jsx               # Rotas da aplicação
+│   │   ├── main.jsx              # Entry point
+│   │   └── index.css             # Estilos globais + Tailwind
+│   ├── public/
+│   │   └── solocloud.svg         # Favicon
+│   ├── index.html                # HTML template
+│   ├── tailwind.config.js        # Configuração Tailwind
+│   ├── vite.config.js            # Configuração Vite
+│   └── package.json              # Dependências Node
+│
+├── .github/workflows/
+│   └── main_mapa-app-clean-8270.yml  # CI/CD GitHub Actions
+│
+├── startup.sh                    # Script de inicialização Azure
+├── requirements.txt              # Dependências Python
+└── CLAUDE.md                     # Contexto para IAs
+```
+
+## Funcionalidades
+
+### Autenticação e Segurança
+- Login JWT com tokens seguros (expiração configurável)
+- Dois níveis de acesso: **Admin** e **User**
+- Validação de senha forte (12+ caracteres, maiúscula, minúscula, número, especial)
+- Rate limiting (5 tentativas/minuto no login)
+- Hash bcrypt (custo 12)
+- Proteção CORS configurável
+
+### Dashboard
+- Estatísticas em tempo real (empresas, produtos, uploads, relatórios)
+- Atividades recentes com timestamps relativos
+- Ações rápidas para navegação
+- Tutorial "Como Funciona"
+
+### Perfil do Usuário
+- Visualização de estatísticas pessoais
+- Últimos uploads e relatórios
+- Edição de dados pessoais
+- Alteração de senha com validação
 
 ### Catálogo Hierárquico
 - **Empresas**: Cadastro com registro MAPA parcial (ex: "PR-12345")
 - **Produtos**: Vinculados a empresas, com registro MAPA parcial (ex: "6.000001")
 - **Registro Completo**: Concatenação automática (ex: "PR-12345-6.000001")
 
+### Upload e Processamento
+- Upload de XMLs de NF-e
+- Validação multi-camada (extensão, MIME, magic numbers)
+- Preview antes de confirmar
+- Extração automática de dados
+- Cadastro de itens faltantes na tela de preview
+
 ### Geração de Relatórios
-- Processamento de todos os XMLs do usuário
+- Processamento de XMLs por período
 - Matching automático com catálogo
 - Agregação por registro MAPA
 - Separação Import vs Domestic
-- Conversão automática de unidades para Toneladas
-- Geração de Excel no formato oficial MAPA
+- Conversão automática para Toneladas
+- Download em Excel (formato oficial MAPA)
 
-### Dashboard
-- Listagem de uploads processados
-- Visualização do catálogo completo
-- Status de itens faltantes
-- Interface intuitiva e responsiva
+## API Endpoints
 
-## Arquitetura Técnica
+### Autenticação
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/api/admin/auth/login` | Login (retorna JWT) |
+| GET | `/api/admin/me` | Info do usuário logado |
 
-### Stack
-- **Backend**: FastAPI + SQLAlchemy + PostgreSQL
-- **Frontend**: HTML5 + CSS3 + JavaScript (Vanilla)
-- **Processamento**: lxml, pdfplumber, pandas, openpyxl
-- **Autenticação**: JWT (python-jose) + bcrypt
-- **Deploy**: Azure App Service + PostgreSQL Flexible Server
+### Administração (Admin only)
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/admin/users` | Listar usuários |
+| POST | `/api/admin/users` | Criar usuário |
+| PATCH | `/api/admin/users/{id}` | Atualizar usuário |
+| DELETE | `/api/admin/users/{id}` | Deletar usuário |
+| GET | `/api/admin/dashboard-stats` | Estatísticas do sistema |
 
-### Estrutura do Projeto
+### Perfil do Usuário
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/user/profile` | Dados do perfil |
+| PATCH | `/api/user/profile` | Atualizar perfil |
+| POST | `/api/user/change-password` | Alterar senha |
+| GET | `/api/user/stats` | Estatísticas pessoais |
 
-```
-mapa-saas/
-├── app/
-│   ├── main.py              # FastAPI app
-│   ├── config.py            # Configurações Pydantic
-│   ├── database.py          # SQLAlchemy setup
-│   ├── models.py            # Modelos ORM
-│   ├── schemas.py           # Schemas Pydantic
-│   ├── auth.py              # Autenticação JWT
-│   ├── routers/
-│   │   ├── admin.py         # Endpoints admin
-│   │   └── user.py          # Endpoints user
-│   └── utils/
-│       ├── validators.py    # Validação de arquivos
-│       ├── nfe_processor.py # Processamento NF-e
-│       ├── mapa_processor.py # Matching catálogo
-│       └── report_generator.py # Geração Excel
-├── static/                  # CSS e JavaScript
-├── templates/               # Templates HTML
-├── scripts/
-│   ├── azure-setup.sh       # Criar recursos Azure
-│   ├── azure-deploy.sh      # Deploy
-│   └── azure-logs.sh        # Logs
-├── startup.sh               # Script de startup (ÚNICO!)
-├── requirements.txt         # Dependências Python
-└── DEPLOY.md               # Guia de deploy completo
-```
+### Catálogo
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/user/companies` | Listar empresas |
+| POST | `/api/user/companies` | Criar empresa |
+| PATCH | `/api/user/companies/{id}` | Atualizar empresa |
+| DELETE | `/api/user/companies/{id}` | Deletar empresa |
+| GET | `/api/user/products` | Listar produtos |
+| POST | `/api/user/products` | Criar produto |
+| GET | `/api/user/catalog` | Catálogo completo |
+
+### Upload e Relatórios
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/api/user/upload-preview` | Preview do XML |
+| POST | `/api/user/upload-confirm` | Confirmar upload |
+| GET | `/api/user/uploads` | Histórico de uploads |
+| POST | `/api/user/generate-report` | Gerar relatório |
+| GET | `/api/user/reports` | Listar relatórios |
 
 ## Instalação Local
 
 ### Pré-requisitos
 - Python 3.11+
+- Node.js 18+
 - PostgreSQL 14+
-- pip
 
-### Setup
+### Backend
 
-1. Clone o repositório:
 ```bash
+# Clone o repositório
 git clone <repo-url>
-cd mapa-saas
-```
+cd solocloud
 
-2. Crie virtual environment:
-```bash
+# Crie virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate  # Windows
-```
+# ou: venv\Scripts\activate  # Windows
 
-3. Instale dependências:
-```bash
+# Instale dependências
 pip install -r requirements.txt
+
+# Configure variáveis de ambiente
+export DATABASE_URL="postgresql://user:pass@localhost:5432/solocloud"
+export SECRET_KEY="sua-chave-secreta-aqui"
+
+# Inicie o backend
+uvicorn app.main:app --reload --port 8000
 ```
 
-4. Configure variáveis de ambiente:
+### Frontend
+
 ```bash
-cp .env.example .env
-# Edite .env com suas configurações
+cd frontend
+
+# Instale dependências
+npm install
+
+# Inicie em modo desenvolvimento
+npm run dev
 ```
 
-5. Crie banco de dados:
-```bash
-createdb mapa_db  # PostgreSQL
+### Acesse
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+## Deploy
+
+O deploy é automático via GitHub Actions. Ao fazer push para `main`:
+
+1. GitHub Actions é acionado
+2. Build do frontend React (`npm run build`)
+3. Empacotamento do backend + frontend/dist
+4. Deploy para Azure App Service
+5. FastAPI serve React em produção
+
+### Variáveis de Ambiente (Azure)
+
+```
+DATABASE_URL=postgresql://...
+SECRET_KEY=...
+CORS_ORIGINS=https://mapa-app-clean-8270.azurewebsites.net
 ```
 
-6. Inicie a aplicação:
-```bash
-uvicorn app.main:app --reload
-```
+## Identidade Visual
 
-7. Acesse:
-- App: http://localhost:8000
-- Docs: http://localhost:8000/api/docs
+### Cores do Tema SoloCloud
+- **Emerald** (#10b981): Representa SOLO (terra/agricultura)
+- **Sky** (#0ea5e9): Representa CLOUD (nuvem/tecnologia)
+- **Violet** (#a855f7): Representa TECH (inovação)
 
-## Deploy Azure
+### Gradientes
+- `from-emerald-600 via-sky-600 to-violet-700`: Gradiente principal
+- Transição visual "Da Terra à Nuvem"
 
-Veja documentação completa em **[DEPLOY.md](./DEPLOY.md)**
+### Logo
+- Ícone duplo: Sprout (broto) + Cloud (nuvem)
+- Representa a união do agro com a tecnologia cloud
 
-### Quick Start
+## Contato
 
-1. **Criar recursos Azure:**
-```bash
-./scripts/azure-setup.sh
-```
-
-2. **Fazer deploy:**
-```bash
-./scripts/azure-deploy.sh
-```
-
-3. **Visualizar logs:**
-```bash
-./scripts/azure-logs.sh
-```
-
-## Uso
-
-### 1. Criar Admin (primeiro acesso)
-
-Use a API diretamente ou crie via código:
-
-```python
-from app.database import SessionLocal
-from app.models import User
-from app.auth import get_password_hash
-
-db = SessionLocal()
-
-admin = User(
-    email="admin@example.com",
-    hashed_password=get_password_hash("SenhaSegura123!"),
-    full_name="Administrador",
-    is_admin=True
-)
-
-db.add(admin)
-db.commit()
-```
-
-### 2. Login
-- Acesse `/login.html`
-- Entre com email e senha
-- Admin: redireciona para painel admin
-- User: redireciona para dashboard
-
-### 3. Fluxo de Trabalho (User)
-
-1. **Upload de XMLs**
-   - Aba "Uploads"
-   - Selecione arquivo XML ou PDF
-   - Sistema processa automaticamente
-
-2. **Cadastrar Catálogo**
-   - Aba "Catálogo"
-   - Adicione empresas com registro MAPA parcial
-   - Adicione produtos vinculados às empresas
-
-3. **Gerar Relatório**
-   - Aba "Relatórios"
-   - Digite período (ex: Q1-2025)
-   - Clique em "Gerar Relatório"
-   - Sistema valida e gera Excel
-
-## API Endpoints
-
-### Admin
-- `POST /api/admin/auth/login` - Login
-- `GET /api/admin/me` - Info do usuário logado
-- `POST /api/admin/users` - Criar usuário
-- `GET /api/admin/users` - Listar usuários
-- `DELETE /api/admin/users/{id}` - Deletar usuário
-
-### User
-- `POST /api/user/upload` - Upload XML/PDF
-- `GET /api/user/uploads` - Listar uploads
-- `POST /api/user/companies` - Criar empresa
-- `GET /api/user/companies` - Listar empresas
-- `POST /api/user/products` - Criar produto
-- `GET /api/user/products` - Listar produtos
-- `GET /api/user/catalog` - Catálogo completo
-- `POST /api/user/generate-report` - Gerar relatório
-
-Documentação interativa: `/api/docs`
-
-## Segurança
-
-- Validação de arquivos multi-camada (extensão, MIME, magic numbers)
-- Proteção contra path traversal
-- Rate limiting em endpoints de autenticação
-- Senhas com hash bcrypt (custo 12)
-- Tokens JWT com expiração configurável
-- CORS configurável
-- SQL injection prevention (SQLAlchemy ORM)
-
-## Extensibilidade
-
-### Adicionar Novo Endpoint
-
-```python
-# app/routers/user.py
-@router.get("/my-new-endpoint")
-async def my_new_endpoint(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    # Sua lógica aqui
-    return {"message": "Hello!"}
-```
-
-### Adicionar Novo Modelo
-
-```python
-# app/models.py
-class MyNewModel(Base):
-    __tablename__ = "my_table"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255))
-```
-
-### Adicionar Processador
-
-```python
-# app/utils/my_processor.py
-class MyProcessor:
-    def process(self, data):
-        # Sua lógica
-        return processed_data
-```
-
-## Troubleshooting
-
-### App não inicia
-- Verifique DATABASE_URL nas variáveis de ambiente
-- Verifique se PostgreSQL está rodando
-- Verifique logs: `./scripts/azure-logs.sh`
-
-### Erro ao fazer upload
-- Verifique tamanho do arquivo (max 10MB)
-- Verifique extensão (.xml ou .pdf)
-- Verifique estrutura do XML
-
-### Erro ao gerar relatório
-- Verifique se há XMLs processados
-- Verifique se empresas/produtos estão cadastrados
-- Veja mensagem de erro detalhada
-
-## Contribuindo
-
-1. Fork o repositório
-2. Crie branch para feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -am 'Add nova feature'`)
-4. Push para branch (`git push origin feature/nova-feature`)
-5. Abra Pull Request
+- **Administrador**: rhyan.hdr@gmail.com
+- **Suporte**: Via links de contato na página de login
 
 ## Licença
 
 Proprietário - Todos os direitos reservados
 
-## Suporte
-
-Para suporte, entre em contato com a equipe de desenvolvimento.
-
 ---
 
 **Versão**: 2.0.0
-**Última Atualização**: 2025-01-15
+**Nome**: SoloCloud
+**Tagline**: Da Terra à Nuvem
+**Última Atualização**: 2025-11-21
