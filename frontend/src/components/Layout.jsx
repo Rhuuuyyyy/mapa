@@ -92,6 +92,13 @@ const Layout = ({ children }) => {
 
             <div className="mt-8 pt-6 border-t border-gray-200">
               <Link
+                to="/profile"
+                className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-200"
+              >
+                <User className="w-5 h-5 text-gray-400" />
+                <span>Meu Perfil</span>
+              </Link>
+              <Link
                 to="/settings"
                 className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-all duration-200"
               >

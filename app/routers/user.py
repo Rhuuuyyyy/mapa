@@ -97,6 +97,72 @@ async def change_password(
     return {"message": "Senha alterada com sucesso"}
 
 
+@router.get("/stats")
+async def get_user_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Retorna estatísticas do usuário logado.
+    """
+    # Contar uploads
+    total_uploads = db.query(models.XMLUpload).filter(
+        models.XMLUpload.user_id == current_user.id
+    ).count()
+
+    # Contar empresas
+    total_companies = db.query(models.Company).filter(
+        models.Company.user_id == current_user.id
+    ).count()
+
+    # Contar produtos
+    total_products = db.query(models.Product).filter(
+        models.Product.user_id == current_user.id
+    ).count()
+
+    # Contar relatórios
+    total_reports = db.query(models.Report).filter(
+        models.Report.user_id == current_user.id
+    ).count()
+
+    # Buscar uploads recentes (últimos 5)
+    recent_uploads = db.query(models.XMLUpload).filter(
+        models.XMLUpload.user_id == current_user.id
+    ).order_by(models.XMLUpload.upload_date.desc()).limit(5).all()
+
+    # Buscar relatórios recentes (últimos 5)
+    recent_reports = db.query(models.Report).filter(
+        models.Report.user_id == current_user.id
+    ).order_by(models.Report.created_at.desc()).limit(5).all()
+
+    return {
+        "totals": {
+            "uploads": total_uploads,
+            "companies": total_companies,
+            "products": total_products,
+            "reports": total_reports
+        },
+        "recent_uploads": [
+            {
+                "id": upload.id,
+                "filename": upload.filename,
+                "upload_date": upload.upload_date.isoformat(),
+                "status": "processed"
+            }
+            for upload in recent_uploads
+        ],
+        "recent_reports": [
+            {
+                "id": report.id,
+                "period": report.period,
+                "created_at": report.created_at.isoformat(),
+                "status": "generated"
+            }
+            for report in recent_reports
+        ]
+    }
+
+
 # ============================================================================
 # CATALOG MANAGEMENT
 # ============================================================================

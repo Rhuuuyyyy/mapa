@@ -81,6 +81,11 @@ export const userProfile = {
     const response = await api.post('/user/change-password', passwordData);
     return response.data;
   },
+
+  getStats: async () => {
+    const response = await api.get('/user/stats');
+    return response.data;
+  },
 };
 
 // ============================================================================
