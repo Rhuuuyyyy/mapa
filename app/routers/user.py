@@ -115,9 +115,9 @@ async def get_user_stats(
         models.Company.user_id == current_user.id
     ).count()
 
-    # Contar produtos
-    total_products = db.query(models.Product).filter(
-        models.Product.user_id == current_user.id
+    # Contar produtos (via empresas do usuário)
+    total_products = db.query(models.Product).join(models.Company).filter(
+        models.Company.user_id == current_user.id
     ).count()
 
     # Contar relatórios
@@ -133,7 +133,7 @@ async def get_user_stats(
     # Buscar relatórios recentes (últimos 5)
     recent_reports = db.query(models.Report).filter(
         models.Report.user_id == current_user.id
-    ).order_by(models.Report.created_at.desc()).limit(5).all()
+    ).order_by(models.Report.generated_at.desc()).limit(5).all()
 
     return {
         "totals": {
@@ -146,7 +146,7 @@ async def get_user_stats(
             {
                 "id": upload.id,
                 "filename": upload.filename,
-                "upload_date": upload.upload_date.isoformat(),
+                "upload_date": upload.upload_date.isoformat() if upload.upload_date else None,
                 "status": "processed"
             }
             for upload in recent_uploads
@@ -154,8 +154,8 @@ async def get_user_stats(
         "recent_reports": [
             {
                 "id": report.id,
-                "period": report.period,
-                "created_at": report.created_at.isoformat(),
+                "period": report.report_period,
+                "created_at": report.generated_at.isoformat() if report.generated_at else None,
                 "status": "generated"
             }
             for report in recent_reports
