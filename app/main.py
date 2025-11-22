@@ -52,6 +52,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ============================================================================
+# SEGURANÇA: Middleware para adicionar headers de segurança
+# ============================================================================
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """
+    Adiciona headers de segurança em todas as respostas.
+    Segue recomendações OWASP para proteção contra ataques comuns.
+    """
+    response = await call_next(request)
+
+    # Previne MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+
+    # Proteção contra clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+
+    # Ativa filtro XSS do navegador (browsers antigos)
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+
+    # Controle de referrer para privacidade
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Desabilita cache para respostas de API (endpoints /api/*)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+
+    # Content Security Policy (CSP) - configuração básica
+    # Nota: Ajustar conforme necessidade do frontend
+    if not settings.debug:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:; "
+            "connect-src 'self' https:; "
+            "frame-ancestors 'none'"
+        )
+
+    return response
+
+
 # Montar arquivos estáticos e templates do backend antigo
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")

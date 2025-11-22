@@ -502,9 +502,10 @@ async def upload_xml_preview(
         with open(temp_file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
     except Exception as e:
+        logger.exception("Erro ao salvar arquivo temporário")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo: {str(e)}"
+            detail="Erro interno ao salvar arquivo. Tente novamente."
         )
 
     # Processar arquivo para preview
@@ -586,7 +587,7 @@ async def upload_xml_preview(
             temp_file_path.unlink()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erro ao processar arquivo: {str(e)}"
+            detail="Erro ao processar arquivo. Verifique se é um XML/PDF de NF-e válido."
         )
 
 
@@ -643,7 +644,7 @@ async def upload_xml_confirm(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao mover arquivo: {str(e)}"
+            detail="Erro interno ao processar arquivo. Tente novamente."
         )
 
     # Extrair chave NF-e para validação de duplicatas (se coluna existir)
@@ -863,7 +864,7 @@ async def upload_xml(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo: {str(e)}"
+            detail="Erro interno ao salvar arquivo. Tente novamente."
         )
 
     # Criar registro no banco
@@ -899,53 +900,8 @@ async def upload_xml(
     return xml_upload
 
 
-@router.get("/uploads", response_model=List[schemas.XMLUploadResponse])
-async def list_uploads(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Lista todos os uploads do usuário.
-    """
-    uploads = db.query(models.XMLUpload).filter(
-        models.XMLUpload.user_id == current_user.id
-    ).order_by(models.XMLUpload.upload_date.desc()).all()
-
-    return uploads
-
-
-@router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_upload(
-    upload_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Deleta upload (arquivo e registro).
-    """
-    upload = db.query(models.XMLUpload).filter(
-        models.XMLUpload.id == upload_id,
-        models.XMLUpload.user_id == current_user.id
-    ).first()
-
-    if not upload:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Upload não encontrado"
-        )
-
-    # Deletar arquivo físico
-    try:
-        if os.path.exists(upload.file_path):
-            os.remove(upload.file_path)
-    except Exception as e:
-        print(f"Warning: Could not delete file {upload.file_path}: {e}")
-
-    # Deletar registro
-    db.delete(upload)
-    db.commit()
-
-    return None
+# NOTA: Funções list_uploads e delete_upload já definidas anteriormente (linhas ~725-780)
+# Removidas duplicatas para evitar comportamento inconsistente
 
 
 @router.get("/uploads/{upload_id}")
@@ -1036,7 +992,7 @@ async def get_upload_details(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar XML: {str(e)}"
+            detail="Erro ao processar arquivo XML. Verifique se é um arquivo válido."
         )
 
 
@@ -1081,7 +1037,7 @@ async def update_upload(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao atualizar upload: {str(e)}"
+            detail="Erro interno ao atualizar upload. Tente novamente."
         )
 
 
@@ -1153,7 +1109,7 @@ async def generate_report(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar relatório: {str(e)}"
+            detail="Erro interno ao processar relatório. Tente novamente."
         )
 
 
@@ -1268,7 +1224,7 @@ async def download_report(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao gerar download: {str(e)}"
+            detail="Erro interno ao gerar download. Tente novamente."
         )
 
 
@@ -1366,5 +1322,5 @@ async def get_proposta_comercial(
         print(f"Erro ao ler proposta comercial: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao ler proposta comercial: {str(e)}"
+            detail="Erro interno ao carregar proposta comercial. Tente novamente."
         )
