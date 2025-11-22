@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Lock, Mail, AlertCircle, Loader2, Cloud, FileText, TrendingUp, CheckCircle, Sprout, ExternalLink } from 'lucide-react';
 
-const ADMIN_EMAIL = 'rhyan.hdr@gmail.com';
+// SEGURANÇA: Email de suporte configurável via variável de ambiente
+// Não expõe email pessoal no código-fonte
+const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'suporte@solocloud.com.br';
 const REMEMBER_EMAIL_KEY = 'solocloud_remember_email';
 
 const Login = () => {
@@ -224,7 +226,7 @@ const Login = () => {
 
                 <div className="text-sm">
                   <a
-                    href={`mailto:${ADMIN_EMAIL}?subject=Esqueci%20minha%20senha%20-%20SoloCloud&body=Olá,%20esqueci%20minha%20senha%20e%20preciso%20de%20ajuda%20para%20recuperá-la.%0A%0AMeu%20email%20de%20cadastro:%20`}
+                    href={`mailto:${SUPPORT_EMAIL}?subject=Esqueci%20minha%20senha%20-%20SoloCloud&body=Olá,%20esqueci%20minha%20senha%20e%20preciso%20de%20ajuda%20para%20recuperá-la.%0A%0AMeu%20email%20de%20cadastro:%20`}
                     className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors"
                   >
                     Esqueceu a senha?
@@ -252,7 +254,7 @@ const Login = () => {
               <p>
                 Não tem uma conta?{' '}
                 <a
-                  href={`mailto:${ADMIN_EMAIL}?subject=Solicita%C3%A7%C3%A3o%20de%20Acesso%20-%20SoloCloud&body=Olá,%20gostaria%20de%20solicitar%20acesso%20à%20plataforma%20SoloCloud.%0A%0ANome:%20%0AEmpresa:%20%0ATelefone:%20`}
+                  href={`mailto:${SUPPORT_EMAIL}?subject=Solicita%C3%A7%C3%A3o%20de%20Acesso%20-%20SoloCloud&body=Olá,%20gostaria%20de%20solicitar%20acesso%20à%20plataforma%20SoloCloud.%0A%0ANome:%20%0AEmpresa:%20%0ATelefone:%20`}
                   className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors inline-flex items-center space-x-1"
                 >
                   <span>Entre em contato com o administrador</span>

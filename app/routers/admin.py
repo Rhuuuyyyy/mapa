@@ -61,12 +61,22 @@ async def setup_first_admin(
     ⚠️ IMPORTANTE: Este endpoint só funciona se não existir nenhum admin.
     Após criar o primeiro admin, este endpoint retorna erro 403.
 
-    REMOVA ESTE ENDPOINT EM PRODUÇÃO após criar o admin inicial!
+    SEGURANÇA: Requer variável ALLOW_ADMIN_SETUP=true para funcionar.
     """
+    import os
+
+    # SEGURANÇA: Verificar se setup está explicitamente habilitado via variável de ambiente
+    if os.getenv("ALLOW_ADMIN_SETUP", "false").lower() != "true":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Endpoint de setup desabilitado. Configure ALLOW_ADMIN_SETUP=true para habilitar."
+        )
+
+    # SEGURANÇA: Usar transação com lock para prevenir race condition
     # Verificar se já existe algum admin
     existing_admin = db.query(models.User).filter(
         models.User.is_admin == True
-    ).first()
+    ).with_for_update().first()
 
     if existing_admin:
         raise HTTPException(
@@ -227,6 +237,9 @@ async def update_user(
     # Atualizar campos fornecidos
     update_data = user_update.dict(exclude_unset=True)
 
+    # SEGURANÇA: Definir explicitamente campos permitidos para prevenir mass assignment
+    ALLOWED_UPDATE_FIELDS = {'full_name', 'company_name', 'is_active', 'is_admin'}
+
     # Se senha fornecida, validar e hashear
     if "password" in update_data:
         is_valid, message = auth.validate_password_strength(update_data["password"])
@@ -235,10 +248,12 @@ async def update_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=message
             )
-        update_data["hashed_password"] = auth.get_password_hash(update_data.pop("password"))
+        user.hashed_password = auth.get_password_hash(update_data.pop("password"))
 
+    # SEGURANÇA: Aplicar apenas campos permitidos
     for field, value in update_data.items():
-        setattr(user, field, value)
+        if field in ALLOWED_UPDATE_FIELDS:
+            setattr(user, field, value)
 
     db.commit()
     db.refresh(user)

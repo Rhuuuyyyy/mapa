@@ -3,14 +3,17 @@ Router de User - Upload, Catálogo, Relatórios.
 Funcionalidades principais do sistema MAPA.
 """
 
+import logging
 import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app import models, schemas, auth
 from app.database import get_db
@@ -20,7 +23,10 @@ from app.utils.nfe_processor import NFeProcessor
 from app.utils.mapa_processor import MAPAProcessor
 from app.utils.report_generator import MAPAReportGenerator
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ============================================================================
@@ -60,13 +66,16 @@ async def update_profile(
 
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
+@limiter.limit("3/minute")  # SEGURANÇA: Rate limit para prevenir brute force
 async def change_password(
+    request: Request,
     password_data: schemas.ChangePasswordRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
     Altera a senha do usuário logado.
+    SEGURANÇA: Rate limited para prevenir ataques de brute force.
     """
     # Verificar senha atual
     if not auth.verify_password(password_data.current_password, current_user.hashed_password):
@@ -457,7 +466,9 @@ async def get_catalog(
 # ============================================================================
 
 @router.post("/upload-preview", response_model=schemas.XMLPreviewResponse)
+@limiter.limit("10/minute")  # SEGURANÇA: Rate limit para prevenir abuso de uploads
 async def upload_xml_preview(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -465,6 +476,7 @@ async def upload_xml_preview(
     """
     Faz preview do XML sem salvar no banco.
     Retorna dados extraídos para revisão do usuário.
+    SEGURANÇA: Rate limited para prevenir DoS via uploads massivos.
     """
     # Validar arquivo
     try:
@@ -490,9 +502,10 @@ async def upload_xml_preview(
         with open(temp_file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
     except Exception as e:
+        logger.exception("Erro ao salvar arquivo temporário")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo: {str(e)}"
+            detail="Erro interno ao salvar arquivo. Tente novamente."
         )
 
     # Processar arquivo para preview
@@ -574,7 +587,7 @@ async def upload_xml_preview(
             temp_file_path.unlink()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erro ao processar arquivo: {str(e)}"
+            detail="Erro ao processar arquivo. Verifique se é um XML/PDF de NF-e válido."
         )
 
 
@@ -587,21 +600,37 @@ async def upload_xml_confirm(
     """
     Confirma upload após revisão do usuário.
     Move arquivo para pasta permanente e salva no banco.
+    SEGURANÇA: Validação rigorosa de path para prevenir Path Traversal.
     """
-    temp_file_path = Path(upload_data.temp_file_path)
+    # SEGURANÇA: Definir diretório base permitido e resolver para path absoluto
+    base_temp_dir = (Path(settings.upload_dir) / "temp" / f"user_{current_user.id}").resolve()
 
-    # Validar que arquivo temporário existe e pertence ao usuário
-    if not temp_file_path.exists():
+    # SEGURANÇA: Resolver o caminho fornecido para path absoluto (elimina ../ e ./)
+    try:
+        requested_path = Path(upload_data.temp_file_path).resolve()
+    except (ValueError, OSError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Caminho de arquivo inválido"
+        )
+
+    # SEGURANÇA: Verificar se o path resolvido está dentro do diretório permitido
+    try:
+        requested_path.relative_to(base_temp_dir)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a este arquivo"
+        )
+
+    # Validar que arquivo temporário existe
+    if not requested_path.exists() or not requested_path.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo temporário não encontrado ou expirou"
         )
 
-    if f"user_{current_user.id}" not in str(temp_file_path):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso negado a este arquivo"
-        )
+    temp_file_path = requested_path
 
     # Criar diretório permanente
     user_upload_dir = Path(settings.upload_dir) / f"user_{current_user.id}"
@@ -615,7 +644,7 @@ async def upload_xml_confirm(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao mover arquivo: {str(e)}"
+            detail="Erro interno ao processar arquivo. Tente novamente."
         )
 
     # Extrair chave NF-e para validação de duplicatas (se coluna existir)
@@ -835,7 +864,7 @@ async def upload_xml(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo: {str(e)}"
+            detail="Erro interno ao salvar arquivo. Tente novamente."
         )
 
     # Criar registro no banco
@@ -871,53 +900,8 @@ async def upload_xml(
     return xml_upload
 
 
-@router.get("/uploads", response_model=List[schemas.XMLUploadResponse])
-async def list_uploads(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Lista todos os uploads do usuário.
-    """
-    uploads = db.query(models.XMLUpload).filter(
-        models.XMLUpload.user_id == current_user.id
-    ).order_by(models.XMLUpload.upload_date.desc()).all()
-
-    return uploads
-
-
-@router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_upload(
-    upload_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Deleta upload (arquivo e registro).
-    """
-    upload = db.query(models.XMLUpload).filter(
-        models.XMLUpload.id == upload_id,
-        models.XMLUpload.user_id == current_user.id
-    ).first()
-
-    if not upload:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Upload não encontrado"
-        )
-
-    # Deletar arquivo físico
-    try:
-        if os.path.exists(upload.file_path):
-            os.remove(upload.file_path)
-    except Exception as e:
-        print(f"Warning: Could not delete file {upload.file_path}: {e}")
-
-    # Deletar registro
-    db.delete(upload)
-    db.commit()
-
-    return None
+# NOTA: Funções list_uploads e delete_upload já definidas anteriormente (linhas ~725-780)
+# Removidas duplicatas para evitar comportamento inconsistente
 
 
 @router.get("/uploads/{upload_id}")
@@ -1008,7 +992,7 @@ async def get_upload_details(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar XML: {str(e)}"
+            detail="Erro ao processar arquivo XML. Verifique se é um arquivo válido."
         )
 
 
@@ -1053,7 +1037,7 @@ async def update_upload(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao atualizar upload: {str(e)}"
+            detail="Erro interno ao atualizar upload. Tente novamente."
         )
 
 
@@ -1062,7 +1046,9 @@ async def update_upload(
 # ============================================================================
 
 @router.post("/generate-report", response_model=schemas.ReportResponse)
+@limiter.limit("5/minute")  # SEGURANÇA: Rate limit para prevenir DoS via processamento intensivo
 async def generate_report(
+    http_request: Request,
     request: schemas.ReportGenerateRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -1070,6 +1056,7 @@ async def generate_report(
     """
     Gera relatório MAPA para o período especificado.
     Processa todos os XMLs do usuário e valida com catálogo.
+    SEGURANÇA: Rate limited para prevenir DoS via processamento intensivo.
     """
     # Buscar XMLs processados para o período
     uploads = db.query(models.XMLUpload).filter(
@@ -1122,7 +1109,7 @@ async def generate_report(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar relatório: {str(e)}"
+            detail="Erro interno ao processar relatório. Tente novamente."
         )
 
 
@@ -1237,7 +1224,7 @@ async def download_report(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao gerar download: {str(e)}"
+            detail="Erro interno ao gerar download. Tente novamente."
         )
 
 
@@ -1335,5 +1322,5 @@ async def get_proposta_comercial(
         print(f"Erro ao ler proposta comercial: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao ler proposta comercial: {str(e)}"
+            detail="Erro interno ao carregar proposta comercial. Tente novamente."
         )
