@@ -151,13 +151,26 @@ class MAPAProcessor:
         # Sucesso - formatar rows
         rows = []
         for mapa_reg, data in aggregated_data.items():
+            # Formatar quantidades: 2 casas decimais, remover trailing zeros
+            qty_import = data["quantity_import"].quantize(Decimal("0.01"))
+            qty_domestic = data["quantity_domestic"].quantize(Decimal("0.01"))
+
+            # Converter para string removendo zeros desnecessários
+            qty_import_str = str(qty_import).rstrip('0').rstrip('.')
+            qty_domestic_str = str(qty_domestic).rstrip('0').rstrip('.')
+
+            # Debug: log dos valores formatados
+            print(f"DEBUG: Formatting quantities for {mapa_reg}")
+            print(f"  Import: {data['quantity_import']} → {qty_import} → '{qty_import_str}'")
+            print(f"  Domestic: {data['quantity_domestic']} → {qty_domestic} → '{qty_domestic_str}'")
+
             rows.append({
                 "mapa_registration": mapa_reg,
                 "product_name": data["product_name"],
                 "product_reference": data["product_reference"],
                 "unit": "Tonelada",
-                "quantity_import": str(data["quantity_import"]),
-                "quantity_domestic": str(data["quantity_domestic"]),
+                "quantity_import": qty_import_str if qty_import else "0",
+                "quantity_domestic": qty_domestic_str if qty_domestic else "0",
                 "source_nfes": list(set(data["source_nfes"]))  # Remove duplicatas
             })
 
@@ -173,20 +186,36 @@ class MAPAProcessor:
         Converte quantidade para toneladas.
 
         Unidades suportadas:
-            - TON, TONELADA, TONELADAS, TN, T -> 1:1
-            - KG, QUILOGRAMA, QUILOGRAMAS -> 1000:1
+            - TON, TONELADA, TONELADAS, TN, T, TONS -> 1:1
+            - KG, QUILOGRAMA, QUILOGRAMAS, KGS, KILO, KILOS -> 1000:1
         """
-        unit_upper = unit.upper().strip()
+        # Normalizar: remover pontos, vírgulas e espaços extras
+        unit_normalized = unit.upper().strip().replace('.', '').replace(',', '').replace(' ', '')
 
-        # Já em toneladas
-        if unit_upper in ["TON", "TONELADA", "TONELADAS", "TN", "T"]:
+        # Debug: log da conversão
+        print(f"DEBUG: Converting {quantity} {unit} (normalized: {unit_normalized})")
+
+        # Já em toneladas - expandido para cobrir mais variações
+        tonnes_units = [
+            "TON", "TONELADA", "TONELADAS", "TN", "T", "TONS",
+            "TONELADA(S)", "TON(S)", "TONNE", "TONNES", "MT"
+        ]
+        if unit_normalized in tonnes_units:
+            print(f"  → Already in tonnes: {quantity}")
             return quantity
 
         # Quilogramas -> Toneladas
-        elif unit_upper in ["KG", "QUILOGRAMA", "QUILOGRAMAS"]:
-            return quantity / Decimal("1000")
+        kg_units = [
+            "KG", "QUILOGRAMA", "QUILOGRAMAS", "KGS", "KILO", "KILOS",
+            "QUILOGRAMA(S)", "KG(S)", "KILOGRAMAS", "KILOGRAMA"
+        ]
+        if unit_normalized in kg_units:
+            result = quantity / Decimal("1000")
+            print(f"  → KG to tonnes: {quantity} / 1000 = {result}")
+            return result
 
-        # Unidade desconhecida - assumir KG (padrão seguro)
-        else:
-            print(f"Warning: Unknown unit '{unit}'. Assuming KG.")
-            return quantity / Decimal("1000")
+        # Unidade desconhecida - LOG WARNING e assumir KG (padrão seguro)
+        print(f"  ⚠️  WARNING: Unknown unit '{unit}' (normalized: '{unit_normalized}'). Assuming KG.")
+        result = quantity / Decimal("1000")
+        print(f"  → Default KG to tonnes: {quantity} / 1000 = {result}")
+        return result

@@ -100,9 +100,17 @@ class NFeProcessor:
     def process_xml(self, file_path: str) -> Optional[NFeData]:
         """
         Processa XML de NF-e.
+        SEGURANÇA: Parser configurado para prevenir XXE (XML External Entity) attacks.
         """
         try:
-            tree = etree.parse(file_path)
+            # Parser seguro que desabilita entidades externas (prevenção XXE)
+            parser = etree.XMLParser(
+                resolve_entities=False,  # Não resolver entidades externas
+                no_network=True,         # Não fazer requisições de rede
+                dtd_validation=False,    # Não validar DTD
+                load_dtd=False           # Não carregar DTD externo
+            )
+            tree = etree.parse(file_path, parser)
             root = tree.getroot()
 
             nfe_data = NFeData()

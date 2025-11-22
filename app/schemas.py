@@ -26,11 +26,23 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    """Schema para atualizar usuário"""
+    """Schema para atualizar usuário (Admin)"""
     full_name: Optional[str] = Field(None, min_length=3, max_length=255)
     company_name: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=12)
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema para usuário atualizar próprio perfil"""
+    full_name: Optional[str] = Field(None, min_length=3, max_length=255)
+    company_name: Optional[str] = Field(None, max_length=255)
+
+
+class ChangePasswordRequest(BaseModel):
+    """Schema para alterar senha"""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=12)
 
 
 class UserResponse(UserBase):
