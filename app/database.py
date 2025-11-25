@@ -16,10 +16,11 @@ try:
     engine = create_engine(
         settings.database_url,
         pool_pre_ping=True,  # Verifica conexão antes de usar
-        pool_size=5,
-        max_overflow=10,
-        pool_recycle=3600,  # Recicla conexões a cada hora
-        echo=settings.debug  # Log SQL queries em debug mode
+        pool_size=10,  # PERFORMANCE: Aumentado de 5 para 10 (mais conexões simultâneas)
+        max_overflow=20,  # PERFORMANCE: Aumentado de 10 para 20 (total: 30 conexões)
+        pool_recycle=300,  # PERFORMANCE: Reduzido de 3600 para 300s (5min - menos tempo com conexões stale)
+        pool_timeout=30,  # Timeout de 30s para pegar conexão do pool
+        echo=False  # PERFORMANCE: NUNCA logar queries (mesmo em debug, usar logging.debug se necessário)
     )
     logger.info("✓ Database engine created successfully")
 except Exception as e:
