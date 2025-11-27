@@ -69,73 +69,70 @@ const Presentation = ({ onClose }) => {
         <X className="w-6 h-6 text-white group-hover:rotate-90 transition-transform duration-300" />
       </button>
 
-      {/* Conteúdo Principal - SEM SCROLL */}
-      <div className="relative z-10 h-full flex flex-col justify-center items-start px-16 py-12 w-full">
-        <div className="w-full max-w-2xl">
+      {/* Conteúdo Principal - CENTRALIZADO */}
+      <div className="relative z-10 h-full flex flex-col justify-center items-center px-16 py-12 w-full">
+        <div className="w-full max-w-4xl text-center">
 
           {/* Logo e Título */}
-          <div className="mb-12">
-            <div className="relative w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-              <Sprout className="w-6 h-6 text-emerald-200 absolute bottom-2 left-2" />
-              <Cloud className="w-8 h-8 text-white absolute top-2 right-2" />
+          <div className="mb-16">
+            <div className="relative w-24 h-24 mx-auto bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-8">
+              <Sprout className="w-10 h-10 text-emerald-200 absolute bottom-3 left-3" />
+              <Cloud className="w-12 h-12 text-white absolute top-3 right-3" />
             </div>
-            <h1 className="text-5xl font-bold text-white mb-4">SoloCloud</h1>
-            <p className="text-2xl text-emerald-100 mb-2">
+            <h1 className="text-7xl font-bold text-white mb-6">SoloCloud</h1>
+            <p className="text-3xl text-emerald-100 mb-4">
               Da Terra à Nuvem
             </p>
-            <p className="text-lg text-sky-200 max-w-xl">
+            <p className="text-xl text-sky-200 max-w-2xl mx-auto">
               Automação completa de relatórios MAPA. Futuramente expandindo para outros sistemas de compliance do agronegócio.
             </p>
           </div>
 
-          {/* ROI - Simples e Direto */}
-          <div className="space-y-6 text-white/90 mb-8">
-            <div className="flex items-start space-x-4">
-              <div className="mt-1 bg-gradient-to-br from-emerald-500/30 to-sky-500/30 backdrop-blur-sm p-3 rounded-lg">
-                <Zap className="w-6 h-6 text-emerald-200" />
+          {/* ROI - Grid 2x2 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-white/90">
+            <div className="flex flex-col items-center space-y-4 bg-white/10 backdrop-blur-md p-8 rounded-2xl">
+              <div className="bg-gradient-to-br from-emerald-500/30 to-sky-500/30 backdrop-blur-sm p-4 rounded-xl">
+                <Zap className="w-10 h-10 text-emerald-200" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-xl mb-1">265× mais rápido</h3>
-                <p className="text-sm text-emerald-100">O processo se torna exponencialmente mais eficiente</p>
+                <h3 className="font-bold text-white text-3xl mb-2">265×</h3>
+                <p className="text-lg text-emerald-100 font-semibold">Mais rápido</p>
+                <p className="text-sm text-emerald-200/80 mt-2">Processo exponencialmente eficiente</p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-4">
-              <div className="mt-1 bg-gradient-to-br from-sky-500/30 to-violet-500/30 backdrop-blur-sm p-3 rounded-lg">
-                <Target className="w-6 h-6 text-sky-200" />
+            <div className="flex flex-col items-center space-y-4 bg-white/10 backdrop-blur-md p-8 rounded-2xl">
+              <div className="bg-gradient-to-br from-sky-500/30 to-violet-500/30 backdrop-blur-sm p-4 rounded-xl">
+                <Target className="w-10 h-10 text-sky-200" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-xl mb-1">105h 36min economizados</h3>
-                <p className="text-sm text-sky-100">Por trimestre, quase 3 semanas de trabalho realocadas</p>
+                <h3 className="font-bold text-white text-3xl mb-2">105h 36min</h3>
+                <p className="text-lg text-sky-100 font-semibold">Economizados</p>
+                <p className="text-sm text-sky-200/80 mt-2">Por trimestre (~3 semanas)</p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-4">
-              <div className="mt-1 bg-gradient-to-br from-violet-500/30 to-emerald-500/30 backdrop-blur-sm p-3 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-violet-200" />
+            <div className="flex flex-col items-center space-y-4 bg-white/10 backdrop-blur-md p-8 rounded-2xl">
+              <div className="bg-gradient-to-br from-violet-500/30 to-emerald-500/30 backdrop-blur-sm p-4 rounded-xl">
+                <CheckCircle className="w-10 h-10 text-violet-200" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-xl mb-1">95% de redução de tempo</h3>
-                <p className="text-sm text-violet-100">Zero erros, 100% conformidade, rastreabilidade completa</p>
+                <h3 className="font-bold text-white text-3xl mb-2">95%</h3>
+                <p className="text-lg text-violet-100 font-semibold">Redução de tempo</p>
+                <p className="text-sm text-violet-200/80 mt-2">Zero erros, 100% conformidade</p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-4">
-              <div className="mt-1 bg-gradient-to-br from-emerald-500/30 to-sky-500/30 backdrop-blur-sm p-3 rounded-lg">
-                <Cloud className="w-6 h-6 text-white" />
+            <div className="flex flex-col items-center space-y-4 bg-white/10 backdrop-blur-md p-8 rounded-2xl">
+              <div className="bg-gradient-to-br from-emerald-500/30 to-sky-500/30 backdrop-blur-sm p-4 rounded-xl">
+                <Cloud className="w-10 h-10 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-xl mb-1">Acesso em tempo real via Cloud</h3>
-                <p className="text-sm text-emerald-100">Gestão remota e segura de qualquer lugar</p>
+                <h3 className="font-bold text-white text-3xl mb-2">Cloud</h3>
+                <p className="text-lg text-emerald-100 font-semibold">Tempo real</p>
+                <p className="text-sm text-emerald-200/80 mt-2">Gestão remota e segura</p>
               </div>
             </div>
-          </div>
-
-          {/* Footer com hint */}
-          <div className="mt-auto pt-8">
-            <p className="text-white/50 text-sm">
-              Pressione <kbd className="px-2 py-1 bg-white/20 rounded text-xs">ESC</kbd> para sair
-            </p>
           </div>
 
         </div>
