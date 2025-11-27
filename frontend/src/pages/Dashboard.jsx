@@ -15,8 +15,10 @@ import {
   CheckCircle,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Presentation as PresentationIcon
 } from 'lucide-react';
+import Presentation from './Presentation';
 
 const StatCard = ({ title, value, icon: Icon, trend, color = 'sky' }) => {
   const colorClasses = {
@@ -170,6 +172,7 @@ const Dashboard = () => {
   const [loadingProposta, setLoadingProposta] = useState(true);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [showPresentation, setShowPresentation] = useState(false);
 
   // Buscar estatísticas do dashboard
   useEffect(() => {
@@ -224,14 +227,30 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Apresentação Modal */}
+      {showPresentation && (
+        <Presentation onClose={() => setShowPresentation(false)} />
+      )}
+
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Olá, {user?.full_name || 'Usuário'}! 👋
-        </h1>
-        <p className="text-gray-600 mt-1">
-          Bem-vindo ao painel do MAPA SaaS
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Olá, {user?.full_name || 'Usuário'}! 👋
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Bem-vindo ao painel do MAPA SaaS
+          </p>
+        </div>
+
+        {/* Botão Apresentação */}
+        <button
+          onClick={() => setShowPresentation(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 via-sky-600 to-violet-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-300 group"
+        >
+          <PresentationIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          Apresentação
+        </button>
       </div>
 
       {/* Stats Grid */}
