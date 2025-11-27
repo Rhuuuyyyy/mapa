@@ -213,37 +213,18 @@ async def create_company(
 
 @router.get("/companies")
 async def list_companies(
-    page: int = 1,
-    page_size: int = 50,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Lista empresas do usuário com paginação.
-    PERFORMANCE: Reduz 60-70% do uso de CPU/memória do banco.
+    Lista empresas do usuário.
+    PERFORMANCE: Limite de 1000 registros para evitar sobrecarga do banco.
     """
-    if page < 1:
-        page = 1
-    if page_size < 1 or page_size > 100:
-        page_size = 50
-
-    skip = (page - 1) * page_size
-
     companies = db.query(models.Company).filter(
         models.Company.user_id == current_user.id
-    ).order_by(models.Company.created_at.desc()).offset(skip).limit(page_size).all()
+    ).order_by(models.Company.created_at.desc()).limit(1000).all()
 
-    total = db.query(models.Company).filter(
-        models.Company.user_id == current_user.id
-    ).count()
-
-    return {
-        "items": companies,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size
-    }
+    return companies
 
 
 @router.patch("/companies/{company_id}", response_model=schemas.CompanyResponse)
@@ -367,24 +348,15 @@ async def create_product(
 
 @router.get("/products")
 async def list_products(
-    page: int = 1,
-    page_size: int = 50,
     company_id: int = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Lista produtos do usuário com paginação.
+    Lista produtos do usuário.
     Se company_id fornecido, filtra por empresa.
-    PERFORMANCE: Reduz 60-70% do uso de CPU/memória especialmente com muitos produtos.
+    PERFORMANCE: Limite de 1000 registros para evitar sobrecarga do banco.
     """
-    if page < 1:
-        page = 1
-    if page_size < 1 or page_size > 100:
-        page_size = 50
-
-    skip = (page - 1) * page_size
-
     query = db.query(models.Product).join(models.Company).filter(
         models.Company.user_id == current_user.id
     )
@@ -392,23 +364,9 @@ async def list_products(
     if company_id:
         query = query.filter(models.Product.company_id == company_id)
 
-    products = query.order_by(models.Product.created_at.desc()).offset(skip).limit(page_size).all()
+    products = query.order_by(models.Product.created_at.desc()).limit(1000).all()
 
-    # Total count
-    count_query = db.query(models.Product).join(models.Company).filter(
-        models.Company.user_id == current_user.id
-    )
-    if company_id:
-        count_query = count_query.filter(models.Product.company_id == company_id)
-    total = count_query.count()
-
-    return {
-        "items": products,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size
-    }
+    return products
 
 
 @router.patch("/products/{product_id}", response_model=schemas.ProductResponse)
@@ -772,31 +730,18 @@ async def upload_xml_confirm(
 
 @router.get("/uploads")
 async def list_uploads(
-    page: int = 1,
-    page_size: int = 50,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Lista uploads do usuário com paginação.
-    PERFORMANCE: Evita carregar milhares de uploads históricos de uma vez.
+    Lista uploads do usuário.
+    PERFORMANCE: Limite de 1000 uploads mais recentes para evitar sobrecarga.
     """
-    if page < 1:
-        page = 1
-    if page_size < 1 or page_size > 100:
-        page_size = 50
-
-    skip = (page - 1) * page_size
-
     uploads = db.query(models.XMLUpload).filter(
         models.XMLUpload.user_id == current_user.id
-    ).order_by(models.XMLUpload.upload_date.desc()).offset(skip).limit(page_size).all()
+    ).order_by(models.XMLUpload.upload_date.desc()).limit(1000).all()
 
-    total = db.query(models.XMLUpload).filter(
-        models.XMLUpload.user_id == current_user.id
-    ).count()
-
-    items = [{
+    return [{
         "id": u.id,
         "filename": u.filename,
         "upload_date": u.upload_date.isoformat(),
@@ -805,14 +750,6 @@ async def list_uploads(
         "status": u.status,
         "error_message": u.error_message
     } for u in uploads]
-
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size
-    }
 
 
 @router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -1186,44 +1123,23 @@ async def generate_report(
 
 @router.get("/reports")
 async def list_reports(
-    page: int = 1,
-    page_size: int = 50,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Lista relatórios gerados pelo usuário com paginação.
-    PERFORMANCE: Evita carregar histórico completo de relatórios.
+    Lista relatórios gerados pelo usuário.
+    PERFORMANCE: Limite de 1000 relatórios mais recentes para evitar sobrecarga.
     """
-    if page < 1:
-        page = 1
-    if page_size < 1 or page_size > 100:
-        page_size = 50
-
-    skip = (page - 1) * page_size
-
     reports = db.query(models.Report).filter(
         models.Report.user_id == current_user.id
-    ).order_by(models.Report.generated_at.desc()).offset(skip).limit(page_size).all()
+    ).order_by(models.Report.generated_at.desc()).limit(1000).all()
 
-    total = db.query(models.Report).filter(
-        models.Report.user_id == current_user.id
-    ).count()
-
-    items = [{
+    return [{
         "id": r.id,
         "report_period": r.report_period,
         "generated_at": r.generated_at.isoformat(),
         "file_path": r.file_path
     } for r in reports]
-
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size
-    }
 
 
 @router.delete("/reports/{report_id}")
