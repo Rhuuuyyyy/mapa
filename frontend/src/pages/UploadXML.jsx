@@ -17,6 +17,8 @@ import {
   X
 } from 'lucide-react';
 import { xmlUploads as xmlUploadsAPI, companies as companiesAPI, products as productsAPI } from '../services/api';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const UploadXML = () => {
   const [step, setStep] = useState('upload'); // 'upload', 'preview', 'success'
@@ -44,12 +46,9 @@ const UploadXML = () => {
   const [userCompanies, setUserCompanies] = useState([]);
   const [editedProducts, setEditedProducts] = useState({});
 
-  // Estados para edição de XML
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingUpload, setEditingUpload] = useState(null);
-  const [editData, setEditData] = useState(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [loadingEdit, setLoadingEdit] = useState(false);
+  // Estados para modais customizados
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, uploadId: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadUploadHistory();
@@ -142,7 +141,12 @@ const UploadXML = () => {
 
   const handleSaveCompany = async () => {
     if (!companyFormData.company_name.trim() || !companyFormData.mapa_registration.trim()) {
-      alert('Preencha todos os campos');
+      setAlertDialog({
+        show: true,
+        title: 'Campos obrigatórios',
+        message: 'Por favor, preencha todos os campos para cadastrar a empresa.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -160,9 +164,19 @@ const UploadXML = () => {
       }));
 
       handleCloseCompanyModal();
-      alert('Empresa cadastrada com sucesso!');
+      setAlertDialog({
+        show: true,
+        title: 'Empresa cadastrada',
+        message: 'A empresa foi cadastrada com sucesso!',
+        type: 'success'
+      });
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao cadastrar empresa');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao cadastrar',
+        message: err.response?.data?.detail || 'Erro ao cadastrar empresa',
+        type: 'error'
+      });
     } finally {
       setSavingCompany(false);
     }
@@ -187,12 +201,22 @@ const UploadXML = () => {
 
   const handleSaveProduct = async () => {
     if (!productFormData.product_name.trim() || !productFormData.mapa_registration.trim()) {
-      alert('Preencha o nome e código do produto');
+      setAlertDialog({
+        show: true,
+        title: 'Campos obrigatórios',
+        message: 'Por favor, preencha o nome e código do produto.',
+        type: 'warning'
+      });
       return;
     }
 
     if (!productFormData.company_id) {
-      alert('Selecione uma empresa para vincular o produto');
+      setAlertDialog({
+        show: true,
+        title: 'Empresa não selecionada',
+        message: 'Selecione uma empresa para vincular o produto.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -229,7 +253,12 @@ const UploadXML = () => {
       }));
 
       handleCloseProductModal();
-      alert('Produto cadastrado com sucesso!');
+      setAlertDialog({
+        show: true,
+        title: 'Produto cadastrado',
+        message: 'O produto foi cadastrado com sucesso!',
+        type: 'success'
+      });
     } catch (err) {
       // Melhor formatação de erro
       let errorMsg = 'Erro ao cadastrar produto';
@@ -241,7 +270,12 @@ const UploadXML = () => {
           errorMsg = detail;
         }
       }
-      alert(errorMsg);
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao cadastrar',
+        message: errorMsg,
+        type: 'error'
+      });
     } finally {
       setSavingProduct(false);
     }
@@ -308,15 +342,29 @@ const UploadXML = () => {
   };
 
   const handleDeleteUpload = async (uploadId) => {
-    if (!window.confirm('Tem certeza que deseja excluir este upload?')) {
-      return;
-    }
+    setConfirmDelete({ show: true, uploadId });
+  };
+
+  const confirmDeleteAction = async () => {
+    const uploadId = confirmDelete.uploadId;
+    setConfirmDelete({ show: false, uploadId: null });
 
     try {
       await xmlUploadsAPI.delete(uploadId);
       loadUploadHistory();
+      setAlertDialog({
+        show: true,
+        title: 'Upload excluído',
+        message: 'O upload foi excluído com sucesso.',
+        type: 'success'
+      });
     } catch (err) {
-      alert('Erro ao excluir upload');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o upload. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -324,61 +372,6 @@ const UploadXML = () => {
     setStep('upload');
     setPreviewData(null);
     setError(null);
-  };
-
-  // Funções para edição de XML
-  const handleEditUpload = async (uploadId) => {
-    try {
-      setLoadingEdit(true);
-      const details = await xmlUploadsAPI.getDetails(uploadId);
-      setEditingUpload(details);
-      setEditData({
-        produtos: details.nfe_data.produtos.map(p => ({
-          codigo: p.codigo,
-          descricao: p.descricao,
-          quantidade: p.quantidade,
-          unidade: p.unidade,
-          mapa_registration: p.matched_mapa_registration || '',
-          product_reference: p.matched_product_reference || ''
-        }))
-      });
-      setShowEditModal(true);
-    } catch (err) {
-      alert('Erro ao carregar dados do XML para edição');
-      console.error(err);
-    } finally {
-      setLoadingEdit(false);
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    try {
-      setSavingEdit(true);
-      await xmlUploadsAPI.update(editingUpload.id, editData);
-      setShowEditModal(false);
-      loadUploadHistory();
-      alert('XML atualizado com sucesso!');
-    } catch (err) {
-      alert('Erro ao salvar alterações');
-      console.error(err);
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  const handleCloseEditModal = () => {
-    setShowEditModal(false);
-    setEditingUpload(null);
-    setEditData(null);
-  };
-
-  const handleEditProductField = (index, field, value) => {
-    setEditData(prev => ({
-      ...prev,
-      produtos: prev.produtos.map((p, i) =>
-        i === index ? { ...p, [field]: value } : p
-      )
-    }));
   };
 
   const formatDate = (dateString) => {
@@ -442,8 +435,8 @@ const UploadXML = () => {
           <div
             className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
               dragActive
-                ? 'border-emerald-500 bg-emerald-50'
-                : 'border-gray-300 hover:border-emerald-400'
+                ? 'border-sky-500 bg-sky-50'
+                : 'border-gray-300 hover:border-sky-400'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -452,7 +445,7 @@ const UploadXML = () => {
           >
             {uploading ? (
               <div>
-                <Loader2 className="w-16 h-16 text-emerald-600 animate-spin mx-auto mb-4" />
+                <Loader2 className="w-16 h-16 text-sky-600 animate-spin mx-auto mb-4" />
                 <p className="text-lg font-semibold text-gray-900 mb-2">
                   Processando arquivo...
                 </p>
@@ -469,7 +462,7 @@ const UploadXML = () => {
                 <p className="text-sm text-gray-600 mb-4">
                   ou clique no botão abaixo para selecionar
                 </p>
-                <label className="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg cursor-pointer transition-colors">
+                <label className="inline-flex items-center px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg cursor-pointer transition-colors">
                   <FileText className="w-5 h-5 mr-2" />
                   Selecionar Arquivo XML
                   <input
@@ -503,7 +496,7 @@ const UploadXML = () => {
 
           {loadingHistory ? (
             <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-2" />
+              <Loader2 className="w-8 h-8 animate-spin text-sky-600 mx-auto mb-2" />
               <p className="text-sm text-gray-600">Carregando histórico...</p>
             </div>
           ) : groupedHistory.length === 0 ? (
@@ -516,7 +509,7 @@ const UploadXML = () => {
               {groupedHistory.map(([quarter, uploads]) => (
                 <div key={quarter}>
                   <div className="flex items-center space-x-3 mb-3">
-                    <Calendar className="w-5 h-5 text-emerald-600" />
+                    <Calendar className="w-5 h-5 text-sky-600" />
                     <h3 className="font-semibold text-gray-900">
                       {quarter.replace('Q', 'º Trimestre de ')}
                     </h3>
@@ -533,7 +526,7 @@ const UploadXML = () => {
                       >
                         <div className="flex items-center space-x-3 flex-1">
                           <FileText className={`w-5 h-5 flex-shrink-0 ${
-                            upload.status === 'processed' ? 'text-emerald-600' :
+                            upload.status === 'processed' ? 'text-sky-600' :
                             upload.status === 'error' ? 'text-red-600' :
                             'text-gray-400'
                           }`} />
@@ -549,7 +542,7 @@ const UploadXML = () => {
 
                         <div className="flex items-center space-x-2">
                           {upload.status === 'processed' && (
-                            <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                            <span className="text-xs px-2 py-1 bg-sky-100 text-sky-800 rounded-full">
                               Processado
                             </span>
                           )}
@@ -565,21 +558,9 @@ const UploadXML = () => {
                           )}
 
                           <button
-                            onClick={() => handleEditUpload(upload.id)}
-                            className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Visualizar/Editar"
-                            disabled={loadingEdit}
-                          >
-                            {loadingEdit ? (
-                              <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
-                            ) : (
-                              <Edit2 className="w-4 h-4 text-emerald-600" />
-                            )}
-                          </button>
-                          <button
                             onClick={() => handleDeleteUpload(upload.id)}
                             className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Excluir"
+                            title="Excluir upload"
                           >
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </button>
@@ -592,6 +573,26 @@ const UploadXML = () => {
             </div>
           )}
         </div>
+
+        {/* Modais customizados */}
+        <ConfirmDialog
+          isOpen={confirmDelete.show}
+          title="Confirmar exclusão"
+          message="Tem certeza que deseja excluir este upload?"
+          onConfirm={confirmDeleteAction}
+          onCancel={() => setConfirmDelete({ show: false, uploadId: null })}
+          confirmText="Sim, excluir"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+
+        <AlertDialog
+          isOpen={alertDialog.show}
+          title={alertDialog.title}
+          message={alertDialog.message}
+          type={alertDialog.type}
+          onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+        />
       </div>
     );
   }
@@ -611,7 +612,7 @@ const UploadXML = () => {
           </div>
           <button
             onClick={handleReset}
-            className="btn-secondary"
+            className="btn-secondary flex items-center"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
             Voltar
@@ -630,15 +631,15 @@ const UploadXML = () => {
         {/* Cards de Informação */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Período Trimestral */}
-          <div className="card bg-emerald-50 border-emerald-200">
+          <div className="card bg-sky-50 border-sky-200">
             <div className="flex items-center space-x-3 mb-3">
-              <Calendar className="w-6 h-6 text-emerald-600" />
-              <h3 className="font-semibold text-emerald-900">Período</h3>
+              <Calendar className="w-6 h-6 text-sky-600" />
+              <h3 className="font-semibold text-sky-900">Período</h3>
             </div>
-            <p className="text-2xl font-bold text-emerald-900">
+            <p className="text-2xl font-bold text-sky-900">
               {previewData.periodo_trimestral || 'N/A'}
             </p>
-            <p className="text-sm text-emerald-700 mt-1">
+            <p className="text-sm text-sky-700 mt-1">
               Será contabilizado no relatório deste trimestre
             </p>
           </div>
@@ -709,7 +710,7 @@ const UploadXML = () => {
         {/* Emitente */}
         <div className="card">
           <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
-            <Building2 className="w-5 h-5 mr-2 text-emerald-600" />
+            <Building2 className="w-5 h-5 mr-2 text-sky-600" />
             Emitente
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -764,7 +765,7 @@ const UploadXML = () => {
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 text-lg flex items-center">
-                <Package className="w-5 h-5 mr-2 text-emerald-600" />
+                <Package className="w-5 h-5 mr-2 text-sky-600" />
                 Produtos ({previewData.produtos_status.length})
               </h3>
               <p className="text-sm text-gray-600">
@@ -782,7 +783,7 @@ const UploadXML = () => {
                     key={index}
                     className={`p-5 rounded-xl border-2 transition-all ${
                       produtoStatus.cadastrado
-                        ? 'bg-emerald-50 border-emerald-200'
+                        ? 'bg-sky-50 border-sky-200'
                         : 'bg-red-50 border-red-200'
                     } ${isEdited ? 'ring-2 ring-blue-400' : ''}`}
                   >
@@ -790,15 +791,15 @@ const UploadXML = () => {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-2">
                         {produtoStatus.cadastrado ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                          <CheckCircle className="w-5 h-5 text-sky-600 flex-shrink-0" />
                         ) : (
                           <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                         )}
                         <div>
-                          <p className={`font-semibold text-lg ${produtoStatus.cadastrado ? 'text-emerald-900' : 'text-red-900'}`}>
+                          <p className={`font-semibold text-lg ${produtoStatus.cadastrado ? 'text-sky-900' : 'text-red-900'}`}>
                             Produto {index + 1}
                           </p>
-                          <p className={`text-sm ${produtoStatus.cadastrado ? 'text-emerald-700' : 'text-red-700'}`}>
+                          <p className={`text-sm ${produtoStatus.cadastrado ? 'text-sky-700' : 'text-red-700'}`}>
                             {produtoStatus.cadastrado ? 'Cadastrado no sistema' : 'Não cadastrado'}
                           </p>
                         </div>
@@ -979,7 +980,7 @@ const UploadXML = () => {
                   <button
                     onClick={handleConfirm}
                     disabled={confirming || temPendencias}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   >
                     {confirming ? (
                       <>
@@ -1181,7 +1182,7 @@ const UploadXML = () => {
     return (
       <div className="space-y-6">
         <div className="card text-center py-12">
-          <CheckCircle className="w-20 h-20 text-emerald-600 mx-auto mb-6" />
+          <CheckCircle className="w-20 h-20 text-sky-600 mx-auto mb-6" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Upload Realizado com Sucesso!
           </h2>
@@ -1190,11 +1191,11 @@ const UploadXML = () => {
           </p>
 
           <div className="flex items-center justify-center space-x-4">
-            <button onClick={handleReset} className="btn-primary">
+            <button onClick={handleReset} className="btn-primary flex items-center">
               <Upload className="w-5 h-5 mr-2" />
               Enviar Outro Arquivo
             </button>
-            <a href="/reports" className="btn-secondary">
+            <a href="/reports" className="btn-secondary flex items-center">
               <FileText className="w-5 h-5 mr-2" />
               Ver Relatórios
             </a>
@@ -1202,145 +1203,38 @@ const UploadXML = () => {
         </div>
 
         {previewData && (
-          <div className="card bg-emerald-50 border-emerald-200">
-            <h3 className="font-semibold text-emerald-900 mb-3">Resumo do Processamento</h3>
-            <div className="space-y-2 text-sm text-emerald-800">
+          <div className="card bg-sky-50 border-sky-200">
+            <h3 className="font-semibold text-sky-900 mb-3">Resumo do Processamento</h3>
+            <div className="space-y-2 text-sm text-sky-800">
               <p>✓ Período trimestral: <strong>{previewData.periodo_trimestral}</strong></p>
               <p>✓ Total de produtos: <strong>{previewData.total_produtos}</strong></p>
               <p>✓ Arquivo: <strong>{previewData.filename}</strong></p>
-              <p className="mt-4 text-emerald-700">
+              <p className="mt-4 text-sky-700">
                 Os dados foram salvos e serão incluídos no relatório trimestral correspondente.
               </p>
             </div>
           </div>
         )}
 
-        {/* Modal de Edição de XML */}
-        {showEditModal && editingUpload && editData && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-              {/* Header */}
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Editar XML</h2>
-                    <p className="text-sm text-gray-600 mt-1">{editingUpload.filename}</p>
-                  </div>
-                  <button
-                    onClick={handleCloseEditModal}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
+        {/* Modais customizados */}
+        <ConfirmDialog
+          isOpen={confirmDelete.show}
+          title="Confirmar exclusão"
+          message="Tem certeza que deseja excluir este upload?"
+          onConfirm={confirmDeleteAction}
+          onCancel={() => setConfirmDelete({ show: false, uploadId: null })}
+          confirmText="Sim, excluir"
+          cancelText="Cancelar"
+          variant="danger"
+        />
 
-              {/* Body */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                      <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">Vincule produtos ao Registro MAPA</p>
-                        <p>Edite o campo "Registro MAPA" para cada produto. Depois de salvar, os produtos serão atualizados no seu cadastro.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Produtos */}
-                  <div className="space-y-3">
-                    {editData.produtos.map((produto, index) => (
-                      <div
-                        key={index}
-                        className="border border-gray-200 rounded-lg p-4 hover:border-emerald-300 transition-colors"
-                      >
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          {/* Informações do XML (read-only) */}
-                          <div className="space-y-2">
-                            <div>
-                              <label className="text-xs font-medium text-gray-500 uppercase">Código</label>
-                              <p className="text-sm font-mono text-gray-900">{produto.codigo}</p>
-                            </div>
-                            <div>
-                              <label className="text-xs font-medium text-gray-500 uppercase">Descrição</label>
-                              <p className="text-sm text-gray-900">{produto.descricao}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 uppercase">Quantidade</label>
-                                <p className="text-sm text-gray-900">{produto.quantidade}</p>
-                              </div>
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 uppercase">Unidade</label>
-                                <p className="text-sm text-gray-900">{produto.unidade}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Campos editáveis */}
-                          <div className="space-y-3 bg-emerald-50 p-3 rounded-lg">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Registro MAPA *
-                              </label>
-                              <input
-                                type="text"
-                                value={produto.mapa_registration}
-                                onChange={(e) => handleEditProductField(index, 'mapa_registration', e.target.value)}
-                                className="input w-full"
-                                placeholder="Ex: SP-12345/2024"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Referência do Produto (opcional)
-                              </label>
-                              <input
-                                type="text"
-                                value={produto.product_reference || ''}
-                                onChange={(e) => handleEditProductField(index, 'product_reference', e.target.value)}
-                                className="input w-full"
-                                placeholder="Ex: REF-001"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="p-6 border-t border-gray-200 bg-gray-50">
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={handleCloseEditModal}
-                    className="btn-secondary"
-                    disabled={savingEdit}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    className="btn-primary"
-                    disabled={savingEdit}
-                  >
-                    {savingEdit ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Salvando...
-                      </>
-                    ) : (
-                      'Salvar Alterações'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <AlertDialog
+          isOpen={alertDialog.show}
+          title={alertDialog.title}
+          message={alertDialog.message}
+          type={alertDialog.type}
+          onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+        />
       </div>
     );
   }

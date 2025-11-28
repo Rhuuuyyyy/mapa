@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { users as usersAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
@@ -33,6 +35,8 @@ const Users = () => {
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, user: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadUsers();
@@ -177,20 +181,39 @@ const Users = () => {
 
   const handleDelete = async (user) => {
     if (user.id === currentUser?.id) {
-      alert('Você não pode excluir sua própria conta');
+      setAlertDialog({
+        show: true,
+        title: 'Ação não permitida',
+        message: 'Você não pode excluir sua própria conta.',
+        type: 'warning'
+      });
       return;
     }
 
-    if (!window.confirm(`Tem certeza que deseja excluir o usuário "${user.email}"?`)) {
-      return;
-    }
+    setConfirmDelete({ show: true, user });
+  };
+
+  const confirmDeleteAction = async () => {
+    const user = confirmDelete.user;
+    setConfirmDelete({ show: false, user: null });
 
     try {
       await usersAPI.delete(user.id);
       await loadUsers();
+      setAlertDialog({
+        show: true,
+        title: 'Usuário excluído',
+        message: `O usuário "${user.email}" foi excluído com sucesso.`,
+        type: 'success'
+      });
     } catch (error) {
       console.error('Erro ao excluir usuário:', error);
-      alert('Erro ao excluir usuário');
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o usuário. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -227,7 +250,7 @@ const Users = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="btn-primary mt-4 sm:mt-0"
+          className="btn-primary mt-4 sm:mt-0 flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" />
           Novo Usuário
@@ -251,7 +274,7 @@ const Users = () => {
       {/* Lista de Usuários */}
       {loading ? (
         <div className="card text-center py-12">
-          <Loader2 className="w-12 h-12 animate-spin text-emerald-600 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-sky-600 mx-auto mb-4" />
           <p className="text-gray-600">Carregando usuários...</p>
         </div>
       ) : filteredUsers.length === 0 ? (
@@ -264,7 +287,7 @@ const Users = () => {
             {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando seu primeiro usuário'}
           </p>
           {!searchTerm && (
-            <button onClick={() => handleOpenModal()} className="btn-primary">
+            <button onClick={() => handleOpenModal()} className="btn-primary flex items-center">
               <Plus className="w-5 h-5 mr-2" />
               Cadastrar Primeiro Usuário
             </button>
@@ -287,14 +310,14 @@ const Users = () => {
                   <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                          <Mail className="w-5 h-5 text-emerald-600" />
+                        <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
+                          <Mail className="w-5 h-5 text-sky-600" />
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
                             {user.full_name}
                             {user.id === currentUser?.id && (
-                              <span className="ml-2 text-xs text-emerald-600 font-medium">(Você)</span>
+                              <span className="ml-2 text-xs text-sky-600 font-medium">(Você)</span>
                             )}
                           </p>
                           <p className="text-sm text-gray-600">{user.email}</p>
@@ -320,10 +343,10 @@ const Users = () => {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleOpenModal(user)}
-                          className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-2 hover:bg-sky-50 rounded-lg transition-colors"
                           title="Editar"
                         >
-                          <Edit2 className="w-4 h-4 text-emerald-600" />
+                          <Edit2 className="w-4 h-4 text-sky-600" />
                         </button>
                         <button
                           onClick={() => handleDelete(user)}
@@ -448,7 +471,7 @@ const Users = () => {
                   name="is_admin"
                   checked={formData.is_admin}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                  className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
                 />
                 <label htmlFor="is_admin" className="flex-1 cursor-pointer">
                   <div className="flex items-center space-x-2">
@@ -491,6 +514,26 @@ const Users = () => {
           </div>
         </div>
       )}
+
+      {/* Modais customizados */}
+      <ConfirmDialog
+        isOpen={confirmDelete.show}
+        title="Confirmar exclusão"
+        message={`Tem certeza que deseja excluir o usuário "${confirmDelete.user?.email}"?`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ show: false, user: null })}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.show}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+      />
     </div>
   );
 };

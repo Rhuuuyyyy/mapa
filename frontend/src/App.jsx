@@ -10,6 +10,8 @@ import Products from './pages/Products';
 import Reports from './pages/Reports';
 import Catalog from './pages/Catalog';
 import Users from './pages/Users';
+import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -57,7 +59,12 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <AuthProvider>
         <Routes>
           {/* Public Routes */}
@@ -138,10 +145,16 @@ function App() {
             path="/settings"
             element={
               <ProtectedRoute>
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Configurações</h2>
-                  <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-                </div>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />

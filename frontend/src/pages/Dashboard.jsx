@@ -15,12 +15,14 @@ import {
   CheckCircle,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Presentation as PresentationIcon
 } from 'lucide-react';
+import Presentation from './Presentation';
 
-const StatCard = ({ title, value, icon: Icon, trend, color = 'emerald' }) => {
+const StatCard = ({ title, value, icon: Icon, trend, color = 'sky' }) => {
   const colorClasses = {
-    emerald: 'bg-emerald-50 text-emerald-600',
+    sky: 'bg-sky-50 text-sky-600',
     blue: 'bg-blue-50 text-blue-600',
     purple: 'bg-purple-50 text-purple-600',
     orange: 'bg-orange-50 text-orange-600',
@@ -34,8 +36,8 @@ const StatCard = ({ title, value, icon: Icon, trend, color = 'emerald' }) => {
           <h3 className="text-3xl font-bold text-gray-900">{value}</h3>
           {trend && (
             <div className="flex items-center mt-2 text-sm">
-              <TrendingUp className="w-4 h-4 text-emerald-600 mr-1" />
-              <span className="text-emerald-600 font-medium">{trend}</span>
+              <TrendingUp className="w-4 h-4 text-sky-600 mr-1" />
+              <span className="text-sky-600 font-medium">{trend}</span>
               <span className="text-gray-500 ml-1">vs. último mês</span>
             </div>
           )}
@@ -106,7 +108,7 @@ const PropostaSection = ({ title, content, index }) => {
                 if (isSeparator) return null;
 
                 return (
-                  <tr key={i} className={isHeader ? 'bg-emerald-100' : i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <tr key={i} className={isHeader ? 'bg-sky-100' : i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                     {cells.map((cell, j) => {
                       const Tag = isHeader ? 'th' : 'td';
                       return (
@@ -143,7 +145,7 @@ const PropostaSection = ({ title, content, index }) => {
         className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center space-x-3">
-          <span className="text-emerald-600 font-bold text-lg">{index + 1}.</span>
+          <span className="text-sky-600 font-bold text-lg">{index + 1}.</span>
           <h3 className="text-lg font-bold text-gray-900">{title}</h3>
         </div>
         {isExpanded ? (
@@ -168,17 +170,31 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [propostaData, setPropostaData] = useState(null);
   const [loadingProposta, setLoadingProposta] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [showPresentation, setShowPresentation] = useState(false);
+
+  // Buscar estatísticas do dashboard
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await api.get('/admin/dashboard-stats');
+        setDashboardStats(response.data);
+      } catch (error) {
+        console.error('Erro ao buscar estatísticas:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   // Buscar dados da proposta comercial
   useEffect(() => {
     const fetchProposta = async () => {
       try {
         const response = await api.get('/user/proposta-comercial');
-        console.log('[PROPOSTA] Resposta da API:', response.data);
-        console.log('[PROPOSTA] Seções:', response.data?.sections);
-        console.log('[PROPOSTA] Total de seções:', response.data?.sections?.length);
-        console.log('[PROPOSTA] Raw content length:', response.data?.raw_content?.length);
-        console.log('[PROPOSTA] Primeiros 500 chars:', response.data?.raw_content?.substring(0, 500));
         setPropostaData(response.data);
       } catch (error) {
         console.error('Erro ao buscar proposta comercial:', error);
@@ -190,48 +206,101 @@ const Dashboard = () => {
     fetchProposta();
   }, []);
 
+  // Função para formatar tempo relativo
+  const formatRelativeTime = (timestamp) => {
+    if (!timestamp) return 'Agora';
+
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Agora';
+    if (diffMins < 60) return `${diffMins} minuto${diffMins > 1 ? 's' : ''} atrás`;
+    if (diffHours < 24) return `${diffHours} hora${diffHours > 1 ? 's' : ''} atrás`;
+    if (diffDays < 7) return `${diffDays} dia${diffDays > 1 ? 's' : ''} atrás`;
+
+    return date.toLocaleDateString('pt-BR');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Apresentação Modal */}
+      {showPresentation && (
+        <Presentation onClose={() => setShowPresentation(false)} />
+      )}
+
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Olá, {user?.full_name || 'Usuário'}! 👋
-        </h1>
-        <p className="text-gray-600 mt-1">
-          Bem-vindo ao painel do MAPA SaaS
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Olá, {user?.full_name || 'Usuário'}! 👋
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Bem-vindo ao painel do MAPA SaaS
+          </p>
+        </div>
+
+        {/* Botão Apresentação */}
+        <button
+          onClick={() => setShowPresentation(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 via-sky-600 to-violet-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-300 group"
+        >
+          <PresentationIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          Apresentação
+        </button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total de Empresas"
-          value="12"
-          icon={Building2}
-          trend="+2 este mês"
-          color="emerald"
-        />
-        <StatCard
-          title="Produtos Cadastrados"
-          value="48"
-          icon={Package}
-          trend="+8 este mês"
-          color="blue"
-        />
-        <StatCard
-          title="XMLs Processados"
-          value="156"
-          icon={FileUp}
-          trend="+23 este mês"
-          color="purple"
-        />
-        <StatCard
-          title="Relatórios Gerados"
-          value="8"
-          icon={FileBarChart}
-          trend="+2 este mês"
-          color="orange"
-        />
+        {loadingStats ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="card animate-pulse">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded w-16"></div>
+                  </div>
+                  <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Total de Empresas"
+              value={dashboardStats?.totals?.companies ?? 0}
+              icon={Building2}
+              trend={dashboardStats?.this_month?.companies > 0 ? `+${dashboardStats.this_month.companies} este mês` : null}
+              color="sky"
+            />
+            <StatCard
+              title="Produtos Cadastrados"
+              value={dashboardStats?.totals?.products ?? 0}
+              icon={Package}
+              trend={dashboardStats?.this_month?.products > 0 ? `+${dashboardStats.this_month.products} este mês` : null}
+              color="blue"
+            />
+            <StatCard
+              title="XMLs Processados"
+              value={dashboardStats?.totals?.uploads ?? 0}
+              icon={FileUp}
+              trend={dashboardStats?.this_month?.uploads > 0 ? `+${dashboardStats.this_month.uploads} este mês` : null}
+              color="purple"
+            />
+            <StatCard
+              title="Relatórios Gerados"
+              value={dashboardStats?.totals?.reports ?? 0}
+              icon={FileBarChart}
+              trend={dashboardStats?.this_month?.reports > 0 ? `+${dashboardStats.this_month.reports} este mês` : null}
+              color="orange"
+            />
+          </>
+        )}
       </div>
 
       {/* Recent Activity */}
@@ -240,25 +309,40 @@ const Dashboard = () => {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 flex items-center">
-              <Activity className="w-5 h-5 mr-2 text-emerald-600" />
+              <Activity className="w-5 h-5 mr-2 text-sky-600" />
               Atividades Recentes
             </h2>
           </div>
           <div className="space-y-4">
-            {[
-              { action: 'Upload de XML processado', time: '5 minutos atrás', status: 'success' },
-              { action: 'Novo produto cadastrado', time: '1 hora atrás', status: 'info' },
-              { action: 'Relatório Q4-2024 gerado', time: '2 horas atrás', status: 'success' },
-              { action: 'Empresa atualizada', time: '1 dia atrás', status: 'info' },
-            ].map((item, index) => (
-              <div key={index} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                <div className={`w-2 h-2 mt-2 rounded-full ${item.status === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{item.action}</p>
-                  <p className="text-xs text-gray-500 mt-1">{item.time}</p>
+            {loadingStats ? (
+              <>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-start space-x-3 p-3 animate-pulse">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-gray-200"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : dashboardStats?.recent_activities?.length > 0 ? (
+              dashboardStats.recent_activities.map((item, index) => (
+                <div key={index} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className={`w-2 h-2 mt-2 rounded-full ${item.status === 'success' ? 'bg-emerald-500' : 'bg-sky-500'}`}></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{item.action}</p>
+                    <p className="text-xs text-gray-500 mt-1">{formatRelativeTime(item.timestamp)}</p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Activity className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>Nenhuma atividade recente</p>
+                <p className="text-xs mt-1">Comece fazendo upload de um XML ou cadastrando uma empresa</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -268,9 +352,9 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => navigate('/upload')}
-              className="p-4 border-2 border-emerald-200 rounded-lg hover:bg-emerald-50 transition-all duration-200 text-left group"
+              className="p-4 border-2 border-sky-200 rounded-lg hover:bg-sky-50 transition-all duration-200 text-left group"
             >
-              <FileUp className="w-8 h-8 text-emerald-600 mb-2 group-hover:scale-110 transition-transform" />
+              <FileUp className="w-8 h-8 text-sky-600 mb-2 group-hover:scale-110 transition-transform" />
               <p className="font-medium text-gray-900">Upload XML</p>
               <p className="text-xs text-gray-500 mt-1">Processar nova NF-e</p>
             </button>
@@ -306,9 +390,9 @@ const Dashboard = () => {
       </div>
 
       {/* Como Funciona? */}
-      <div className="card bg-gradient-to-br from-emerald-50 to-blue-50 border-emerald-200">
+      <div className="card bg-gradient-to-br from-sky-50 to-blue-50 border-sky-200">
         <div className="flex items-center space-x-3 mb-6">
-          <div className="p-3 bg-emerald-600 rounded-lg">
+          <div className="p-3 bg-sky-600 rounded-lg">
             <BookOpen className="w-6 h-6 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900">Como Funciona?</h2>
@@ -316,12 +400,12 @@ const Dashboard = () => {
 
         <div className="space-y-6">
           <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0 w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold">
+            <div className="flex-shrink-0 w-10 h-10 bg-sky-600 text-white rounded-full flex items-center justify-center font-bold">
               1
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-2 flex items-center">
-                <Building2 className="w-5 h-5 mr-2 text-emerald-600" />
+                <Building2 className="w-5 h-5 mr-2 text-sky-600" />
                 Cadastre suas Empresas
               </h3>
               <p className="text-gray-700 text-sm">
@@ -332,12 +416,12 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0 w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold">
+            <div className="flex-shrink-0 w-10 h-10 bg-sky-600 text-white rounded-full flex items-center justify-center font-bold">
               2
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-2 flex items-center">
-                <Package className="w-5 h-5 mr-2 text-emerald-600" />
+                <Package className="w-5 h-5 mr-2 text-sky-600" />
                 Cadastre seus Produtos
               </h3>
               <p className="text-gray-700 text-sm">
@@ -348,12 +432,12 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0 w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold">
+            <div className="flex-shrink-0 w-10 h-10 bg-sky-600 text-white rounded-full flex items-center justify-center font-bold">
               3
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-2 flex items-center">
-                <FileUp className="w-5 h-5 mr-2 text-emerald-600" />
+                <FileUp className="w-5 h-5 mr-2 text-sky-600" />
                 Faça Upload dos XMLs
               </h3>
               <p className="text-gray-700 text-sm">
@@ -365,12 +449,12 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0 w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold">
+            <div className="flex-shrink-0 w-10 h-10 bg-sky-600 text-white rounded-full flex items-center justify-center font-bold">
               4
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-2 flex items-center">
-                <FileBarChart className="w-5 h-5 mr-2 text-emerald-600" />
+                <FileBarChart className="w-5 h-5 mr-2 text-sky-600" />
                 Gere o Relatório Trimestral
               </h3>
               <p className="text-gray-700 text-sm">
@@ -381,9 +465,9 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="p-4 bg-white border-2 border-emerald-200 rounded-lg">
+          <div className="p-4 bg-white border-2 border-sky-200 rounded-lg">
             <div className="flex items-start space-x-3">
-              <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-bold text-gray-900 mb-1">Importante!</h4>
                 <ul className="text-sm text-gray-700 space-y-1">

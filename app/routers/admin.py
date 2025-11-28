@@ -61,12 +61,22 @@ async def setup_first_admin(
     ⚠️ IMPORTANTE: Este endpoint só funciona se não existir nenhum admin.
     Após criar o primeiro admin, este endpoint retorna erro 403.
 
-    REMOVA ESTE ENDPOINT EM PRODUÇÃO após criar o admin inicial!
+    SEGURANÇA: Requer variável ALLOW_ADMIN_SETUP=true para funcionar.
     """
+    import os
+
+    # SEGURANÇA: Verificar se setup está explicitamente habilitado via variável de ambiente
+    if os.getenv("ALLOW_ADMIN_SETUP", "false").lower() != "true":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Endpoint de setup desabilitado. Configure ALLOW_ADMIN_SETUP=true para habilitar."
+        )
+
+    # SEGURANÇA: Usar transação com lock para prevenir race condition
     # Verificar se já existe algum admin
     existing_admin = db.query(models.User).filter(
         models.User.is_admin == True
-    ).first()
+    ).with_for_update().first()
 
     if existing_admin:
         raise HTTPException(
@@ -227,6 +237,9 @@ async def update_user(
     # Atualizar campos fornecidos
     update_data = user_update.dict(exclude_unset=True)
 
+    # SEGURANÇA: Definir explicitamente campos permitidos para prevenir mass assignment
+    ALLOWED_UPDATE_FIELDS = {'full_name', 'company_name', 'is_active', 'is_admin'}
+
     # Se senha fornecida, validar e hashear
     if "password" in update_data:
         is_valid, message = auth.validate_password_strength(update_data["password"])
@@ -235,10 +248,12 @@ async def update_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=message
             )
-        update_data["hashed_password"] = auth.get_password_hash(update_data.pop("password"))
+        user.hashed_password = auth.get_password_hash(update_data.pop("password"))
 
+    # SEGURANÇA: Aplicar apenas campos permitidos
     for field, value in update_data.items():
-        setattr(user, field, value)
+        if field in ALLOWED_UPDATE_FIELDS:
+            setattr(user, field, value)
 
     db.commit()
     db.refresh(user)
@@ -275,3 +290,192 @@ async def delete_user(
     db.commit()
 
     return None
+
+
+# ============================================================================
+# DASHBOARD STATISTICS
+# ============================================================================
+
+@router.get("/dashboard-stats")
+async def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Retorna estatísticas do dashboard.
+    - Admin: vê estatísticas globais do sistema
+    - Usuário: vê apenas suas próprias estatísticas
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+
+    # Define o filtro base
+    if current_user.is_admin:
+        # Admin vê tudo
+        user_filter = True
+        company_user_filter = True
+    else:
+        # Usuário vê apenas seus dados
+        user_filter = models.XMLUpload.user_id == current_user.id
+        company_user_filter = models.Company.user_id == current_user.id
+
+    # Totais
+    if current_user.is_admin:
+        total_companies = db.query(models.Company).count()
+        total_products = db.query(models.Product).count()
+        total_uploads = db.query(models.XMLUpload).count()
+        total_reports = db.query(models.Report).count()
+        total_users = db.query(models.User).count()
+    else:
+        total_companies = db.query(models.Company).filter(
+            models.Company.user_id == current_user.id
+        ).count()
+        total_products = db.query(models.Product).join(models.Company).filter(
+            models.Company.user_id == current_user.id
+        ).count()
+        total_uploads = db.query(models.XMLUpload).filter(
+            models.XMLUpload.user_id == current_user.id
+        ).count()
+        total_reports = db.query(models.Report).filter(
+            models.Report.user_id == current_user.id
+        ).count()
+        total_users = 1
+
+    # Calcular período do mês atual e anterior
+    now = datetime.utcnow()
+    first_day_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    first_day_last_month = (first_day_this_month - timedelta(days=1)).replace(day=1)
+
+    # Estatísticas deste mês
+    if current_user.is_admin:
+        companies_this_month = db.query(models.Company).filter(
+            models.Company.created_at >= first_day_this_month
+        ).count()
+        products_this_month = db.query(models.Product).filter(
+            models.Product.created_at >= first_day_this_month
+        ).count()
+        uploads_this_month = db.query(models.XMLUpload).filter(
+            models.XMLUpload.upload_date >= first_day_this_month
+        ).count()
+        reports_this_month = db.query(models.Report).filter(
+            models.Report.generated_at >= first_day_this_month
+        ).count()
+    else:
+        companies_this_month = db.query(models.Company).filter(
+            models.Company.user_id == current_user.id,
+            models.Company.created_at >= first_day_this_month
+        ).count()
+        products_this_month = db.query(models.Product).join(models.Company).filter(
+            models.Company.user_id == current_user.id,
+            models.Product.created_at >= first_day_this_month
+        ).count()
+        uploads_this_month = db.query(models.XMLUpload).filter(
+            models.XMLUpload.user_id == current_user.id,
+            models.XMLUpload.upload_date >= first_day_this_month
+        ).count()
+        reports_this_month = db.query(models.Report).filter(
+            models.Report.user_id == current_user.id,
+            models.Report.generated_at >= first_day_this_month
+        ).count()
+
+    # Atividades recentes (últimas 10)
+    recent_activities = []
+
+    # Buscar uploads recentes
+    if current_user.is_admin:
+        recent_uploads = db.query(models.XMLUpload).order_by(
+            models.XMLUpload.upload_date.desc()
+        ).limit(5).all()
+    else:
+        recent_uploads = db.query(models.XMLUpload).filter(
+            models.XMLUpload.user_id == current_user.id
+        ).order_by(models.XMLUpload.upload_date.desc()).limit(5).all()
+
+    for upload in recent_uploads:
+        recent_activities.append({
+            "type": "upload",
+            "action": f"XML processado: {upload.filename[:30]}..." if len(upload.filename) > 30 else f"XML processado: {upload.filename}",
+            "timestamp": upload.upload_date.isoformat() if upload.upload_date else None,
+            "status": "success"
+        })
+
+    # Buscar relatórios recentes
+    if current_user.is_admin:
+        recent_reports = db.query(models.Report).order_by(
+            models.Report.generated_at.desc()
+        ).limit(5).all()
+    else:
+        recent_reports = db.query(models.Report).filter(
+            models.Report.user_id == current_user.id
+        ).order_by(models.Report.generated_at.desc()).limit(5).all()
+
+    for report in recent_reports:
+        recent_activities.append({
+            "type": "report",
+            "action": f"Relatório {report.report_period} gerado",
+            "timestamp": report.generated_at.isoformat() if report.generated_at else None,
+            "status": "success"
+        })
+
+    # Buscar empresas recentes
+    if current_user.is_admin:
+        recent_companies = db.query(models.Company).order_by(
+            models.Company.created_at.desc()
+        ).limit(3).all()
+    else:
+        recent_companies = db.query(models.Company).filter(
+            models.Company.user_id == current_user.id
+        ).order_by(models.Company.created_at.desc()).limit(3).all()
+
+    for company in recent_companies:
+        recent_activities.append({
+            "type": "company",
+            "action": f"Empresa cadastrada: {company.company_name[:25]}..." if len(company.company_name) > 25 else f"Empresa cadastrada: {company.company_name}",
+            "timestamp": company.created_at.isoformat() if company.created_at else None,
+            "status": "info"
+        })
+
+    # Buscar produtos recentes
+    if current_user.is_admin:
+        recent_products = db.query(models.Product).order_by(
+            models.Product.created_at.desc()
+        ).limit(3).all()
+    else:
+        recent_products = db.query(models.Product).join(models.Company).filter(
+            models.Company.user_id == current_user.id
+        ).order_by(models.Product.created_at.desc()).limit(3).all()
+
+    for product in recent_products:
+        recent_activities.append({
+            "type": "product",
+            "action": f"Produto cadastrado: {product.product_name[:25]}..." if len(product.product_name) > 25 else f"Produto cadastrado: {product.product_name}",
+            "timestamp": product.created_at.isoformat() if product.created_at else None,
+            "status": "info"
+        })
+
+    # Ordenar atividades por timestamp (mais recentes primeiro)
+    recent_activities.sort(
+        key=lambda x: x["timestamp"] if x["timestamp"] else "",
+        reverse=True
+    )
+
+    # Limitar a 10 atividades
+    recent_activities = recent_activities[:10]
+
+    return {
+        "totals": {
+            "companies": total_companies,
+            "products": total_products,
+            "uploads": total_uploads,
+            "reports": total_reports,
+            "users": total_users if current_user.is_admin else None
+        },
+        "this_month": {
+            "companies": companies_this_month,
+            "products": products_this_month,
+            "uploads": uploads_this_month,
+            "reports": reports_this_month
+        },
+        "recent_activities": recent_activities,
+        "is_admin": current_user.is_admin
+    }

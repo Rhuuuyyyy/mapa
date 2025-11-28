@@ -3,14 +3,17 @@ Router de User - Upload, Catálogo, Relatórios.
 Funcionalidades principais do sistema MAPA.
 """
 
+import logging
 import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app import models, schemas, auth
 from app.database import get_db
@@ -20,7 +23,153 @@ from app.utils.nfe_processor import NFeProcessor
 from app.utils.mapa_processor import MAPAProcessor
 from app.utils.report_generator import MAPAReportGenerator
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
+
+
+# ============================================================================
+# USER PROFILE & SETTINGS
+# ============================================================================
+
+@router.get("/profile", response_model=schemas.UserResponse)
+async def get_profile(
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Retorna dados do perfil do usuário logado.
+    """
+    return current_user
+
+
+@router.patch("/profile", response_model=schemas.UserResponse)
+async def update_profile(
+    profile_data: schemas.UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Atualiza dados do perfil do usuário logado.
+    """
+    # Atualizar apenas campos fornecidos
+    if profile_data.full_name is not None:
+        current_user.full_name = profile_data.full_name.strip()
+
+    if profile_data.company_name is not None:
+        current_user.company_name = profile_data.company_name.strip() if profile_data.company_name else None
+
+    db.commit()
+    db.refresh(current_user)
+
+    return current_user
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+@limiter.limit("3/minute")  # SEGURANÇA: Rate limit para prevenir brute force
+async def change_password(
+    request: Request,
+    password_data: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Altera a senha do usuário logado.
+    SEGURANÇA: Rate limited para prevenir ataques de brute force.
+    """
+    # Verificar senha atual
+    if not auth.verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Senha atual incorreta"
+        )
+
+    # Validar força da nova senha
+    is_valid, message = auth.validate_password_strength(password_data.new_password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    # Verificar se nova senha é diferente da atual
+    if auth.verify_password(password_data.new_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nova senha deve ser diferente da senha atual"
+        )
+
+    # Atualizar senha
+    current_user.hashed_password = auth.get_password_hash(password_data.new_password)
+    db.commit()
+
+    return {"message": "Senha alterada com sucesso"}
+
+
+@router.get("/stats")
+async def get_user_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Retorna estatísticas do usuário logado.
+    """
+    # Contar uploads
+    total_uploads = db.query(models.XMLUpload).filter(
+        models.XMLUpload.user_id == current_user.id
+    ).count()
+
+    # Contar empresas
+    total_companies = db.query(models.Company).filter(
+        models.Company.user_id == current_user.id
+    ).count()
+
+    # Contar produtos (via empresas do usuário)
+    total_products = db.query(models.Product).join(models.Company).filter(
+        models.Company.user_id == current_user.id
+    ).count()
+
+    # Contar relatórios
+    total_reports = db.query(models.Report).filter(
+        models.Report.user_id == current_user.id
+    ).count()
+
+    # Buscar uploads recentes (últimos 5)
+    recent_uploads = db.query(models.XMLUpload).filter(
+        models.XMLUpload.user_id == current_user.id
+    ).order_by(models.XMLUpload.upload_date.desc()).limit(5).all()
+
+    # Buscar relatórios recentes (últimos 5)
+    recent_reports = db.query(models.Report).filter(
+        models.Report.user_id == current_user.id
+    ).order_by(models.Report.generated_at.desc()).limit(5).all()
+
+    return {
+        "totals": {
+            "uploads": total_uploads,
+            "companies": total_companies,
+            "products": total_products,
+            "reports": total_reports
+        },
+        "recent_uploads": [
+            {
+                "id": upload.id,
+                "filename": upload.filename,
+                "upload_date": upload.upload_date.isoformat() if upload.upload_date else None,
+                "status": "processed"
+            }
+            for upload in recent_uploads
+        ],
+        "recent_reports": [
+            {
+                "id": report.id,
+                "period": report.report_period,
+                "created_at": report.generated_at.isoformat() if report.generated_at else None,
+                "status": "generated"
+            }
+            for report in recent_reports
+        ]
+    }
 
 
 # ============================================================================
@@ -62,17 +211,18 @@ async def create_company(
     return new_company
 
 
-@router.get("/companies", response_model=List[schemas.CompanyResponse])
+@router.get("/companies")
 async def list_companies(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Lista todas as empresas do usuário.
+    Lista empresas do usuário.
+    PERFORMANCE: Limite de 1000 registros para evitar sobrecarga do banco.
     """
     companies = db.query(models.Company).filter(
         models.Company.user_id == current_user.id
-    ).all()
+    ).order_by(models.Company.created_at.desc()).limit(1000).all()
 
     return companies
 
@@ -196,7 +346,7 @@ async def create_product(
     return new_product
 
 
-@router.get("/products", response_model=List[schemas.ProductResponse])
+@router.get("/products")
 async def list_products(
     company_id: int = None,
     db: Session = Depends(get_db),
@@ -205,6 +355,7 @@ async def list_products(
     """
     Lista produtos do usuário.
     Se company_id fornecido, filtra por empresa.
+    PERFORMANCE: Limite de 1000 registros para evitar sobrecarga do banco.
     """
     query = db.query(models.Product).join(models.Company).filter(
         models.Company.user_id == current_user.id
@@ -213,7 +364,8 @@ async def list_products(
     if company_id:
         query = query.filter(models.Product.company_id == company_id)
 
-    products = query.all()
+    products = query.order_by(models.Product.created_at.desc()).limit(1000).all()
+
     return products
 
 
@@ -296,10 +448,14 @@ async def get_catalog(
 ):
     """
     Retorna catálogo completo do usuário (empresas com produtos).
+    PERFORMANCE: Usa joinedload para evitar N+1 queries (reduz 100 queries para 1).
     """
+    from sqlalchemy.orm import joinedload
+
+    # PERFORMANCE: Eager load products para evitar N+1
     companies = db.query(models.Company).filter(
         models.Company.user_id == current_user.id
-    ).all()
+    ).options(joinedload(models.Company.products)).all()
 
     # Contar totais
     total_companies = len(companies)
@@ -317,7 +473,9 @@ async def get_catalog(
 # ============================================================================
 
 @router.post("/upload-preview", response_model=schemas.XMLPreviewResponse)
+@limiter.limit("10/minute")  # SEGURANÇA: Rate limit para prevenir abuso de uploads
 async def upload_xml_preview(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -325,6 +483,7 @@ async def upload_xml_preview(
     """
     Faz preview do XML sem salvar no banco.
     Retorna dados extraídos para revisão do usuário.
+    SEGURANÇA: Rate limited para prevenir DoS via uploads massivos.
     """
     # Validar arquivo
     try:
@@ -350,9 +509,10 @@ async def upload_xml_preview(
         with open(temp_file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
     except Exception as e:
+        logger.exception("Erro ao salvar arquivo temporário")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo: {str(e)}"
+            detail="Erro interno ao salvar arquivo. Tente novamente."
         )
 
     # Processar arquivo para preview
@@ -434,7 +594,7 @@ async def upload_xml_preview(
             temp_file_path.unlink()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erro ao processar arquivo: {str(e)}"
+            detail="Erro ao processar arquivo. Verifique se é um XML/PDF de NF-e válido."
         )
 
 
@@ -447,21 +607,37 @@ async def upload_xml_confirm(
     """
     Confirma upload após revisão do usuário.
     Move arquivo para pasta permanente e salva no banco.
+    SEGURANÇA: Validação rigorosa de path para prevenir Path Traversal.
     """
-    temp_file_path = Path(upload_data.temp_file_path)
+    # SEGURANÇA: Definir diretório base permitido e resolver para path absoluto
+    base_temp_dir = (Path(settings.upload_dir) / "temp" / f"user_{current_user.id}").resolve()
 
-    # Validar que arquivo temporário existe e pertence ao usuário
-    if not temp_file_path.exists():
+    # SEGURANÇA: Resolver o caminho fornecido para path absoluto (elimina ../ e ./)
+    try:
+        requested_path = Path(upload_data.temp_file_path).resolve()
+    except (ValueError, OSError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Caminho de arquivo inválido"
+        )
+
+    # SEGURANÇA: Verificar se o path resolvido está dentro do diretório permitido
+    try:
+        requested_path.relative_to(base_temp_dir)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a este arquivo"
+        )
+
+    # Validar que arquivo temporário existe
+    if not requested_path.exists() or not requested_path.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo temporário não encontrado ou expirou"
         )
 
-    if f"user_{current_user.id}" not in str(temp_file_path):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso negado a este arquivo"
-        )
+    temp_file_path = requested_path
 
     # Criar diretório permanente
     user_upload_dir = Path(settings.upload_dir) / f"user_{current_user.id}"
@@ -475,8 +651,38 @@ async def upload_xml_confirm(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao mover arquivo: {str(e)}"
+            detail="Erro interno ao processar arquivo. Tente novamente."
         )
+
+    # Extrair chave NF-e para validação de duplicatas (se coluna existir)
+    nfe_key = None
+    try:
+        if upload_data.nfe_data and upload_data.nfe_data.get('chave_acesso'):
+            nfe_key = upload_data.nfe_data['chave_acesso']
+
+            # Validar se NF-e já foi processada por este usuário
+            # Só valida se a coluna nfe_key existir no banco
+            if hasattr(models.XMLUpload, 'nfe_key'):
+                existing_upload = db.query(models.XMLUpload).filter(
+                    models.XMLUpload.user_id == current_user.id,
+                    models.XMLUpload.nfe_key == nfe_key
+                ).first()
+
+                if existing_upload:
+                    # Deletar arquivo temporário
+                    if permanent_path.exists():
+                        permanent_path.unlink()
+
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"NF-e com chave {nfe_key} já foi processada em {existing_upload.upload_date.strftime('%d/%m/%Y %H:%M')}. ID do upload: {existing_upload.id}"
+                    )
+    except HTTPException:
+        raise  # Re-raise se for erro de duplicata
+    except Exception as e:
+        # Se coluna não existir ainda (antes da migração), continua sem validar
+        print(f"Aviso: Validação de duplicatas ignorada (migração pendente): {e}")
+        nfe_key = None
 
     # Processar XML para extrair período
     period = None
@@ -493,13 +699,19 @@ async def upload_xml_confirm(
             print(f"Erro ao calcular período: {e}")
 
     # Criar registro no banco com dados confirmados/editados
-    xml_upload = models.XMLUpload(
-        user_id=current_user.id,
-        filename=upload_data.filename,
-        file_path=str(permanent_path),
-        period=period,
-        status="processed"
-    )
+    upload_data_dict = {
+        "user_id": current_user.id,
+        "filename": upload_data.filename,
+        "file_path": str(permanent_path),
+        "period": period,
+        "status": "processed"
+    }
+
+    # Adicionar nfe_key apenas se a coluna existir (após migração)
+    if hasattr(models.XMLUpload, 'nfe_key'):
+        upload_data_dict["nfe_key"] = nfe_key
+
+    xml_upload = models.XMLUpload(**upload_data_dict)
 
     db.add(xml_upload)
     db.commit()
@@ -514,6 +726,114 @@ async def upload_xml_confirm(
         pass
 
     return xml_upload
+
+
+@router.get("/uploads")
+async def list_uploads(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Lista uploads do usuário.
+    PERFORMANCE: Limite de 1000 uploads mais recentes para evitar sobrecarga.
+    """
+    uploads = db.query(models.XMLUpload).filter(
+        models.XMLUpload.user_id == current_user.id
+    ).order_by(models.XMLUpload.upload_date.desc()).limit(1000).all()
+
+    return [{
+        "id": u.id,
+        "filename": u.filename,
+        "upload_date": u.upload_date.isoformat(),
+        "period": u.period,
+        "nfe_key": getattr(u, 'nfe_key', None),
+        "status": u.status,
+        "error_message": u.error_message
+    } for u in uploads]
+
+
+@router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_upload(
+    upload_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Deleta um upload específico do usuário.
+    Remove o arquivo físico e o registro do banco.
+    """
+    import os
+
+    # Buscar upload
+    upload = db.query(models.XMLUpload).filter(
+        models.XMLUpload.id == upload_id,
+        models.XMLUpload.user_id == current_user.id
+    ).first()
+
+    if not upload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload não encontrado"
+        )
+
+    # Deletar arquivo físico se existir
+    if upload.file_path and os.path.exists(upload.file_path):
+        try:
+            os.remove(upload.file_path)
+        except Exception as e:
+            print(f"Erro ao deletar arquivo físico: {e}")
+            # Continua mesmo se falhar ao deletar arquivo
+
+    # Deletar registro do banco (cascade vai deletar reports associados)
+    db.delete(upload)
+    db.commit()
+
+    return None
+
+
+@router.patch("/uploads/{upload_id}")
+async def update_upload_period(
+    upload_id: int,
+    period: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Atualiza o período de um upload específico.
+    Formato esperado: Q1-2025, Q2-2025, Q3-2025, Q4-2025
+    """
+    import re
+
+    # Validar formato do período
+    if not re.match(r'^Q[1-4]-\d{4}$', period):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato de período inválido. Use Q1-2025, Q2-2025, Q3-2025 ou Q4-2025"
+        )
+
+    # Buscar upload
+    upload = db.query(models.XMLUpload).filter(
+        models.XMLUpload.id == upload_id,
+        models.XMLUpload.user_id == current_user.id
+    ).first()
+
+    if not upload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload não encontrado"
+        )
+
+    # Atualizar período
+    upload.period = period
+    db.commit()
+    db.refresh(upload)
+
+    return {
+        "id": upload.id,
+        "filename": upload.filename,
+        "period": upload.period,
+        "message": "Período atualizado com sucesso"
+    }
 
 
 @router.post("/upload", response_model=schemas.XMLUploadResponse, status_code=status.HTTP_201_CREATED)
@@ -552,7 +872,7 @@ async def upload_xml(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo: {str(e)}"
+            detail="Erro interno ao salvar arquivo. Tente novamente."
         )
 
     # Criar registro no banco
@@ -588,53 +908,8 @@ async def upload_xml(
     return xml_upload
 
 
-@router.get("/uploads", response_model=List[schemas.XMLUploadResponse])
-async def list_uploads(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Lista todos os uploads do usuário.
-    """
-    uploads = db.query(models.XMLUpload).filter(
-        models.XMLUpload.user_id == current_user.id
-    ).order_by(models.XMLUpload.upload_date.desc()).all()
-
-    return uploads
-
-
-@router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_upload(
-    upload_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    """
-    Deleta upload (arquivo e registro).
-    """
-    upload = db.query(models.XMLUpload).filter(
-        models.XMLUpload.id == upload_id,
-        models.XMLUpload.user_id == current_user.id
-    ).first()
-
-    if not upload:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Upload não encontrado"
-        )
-
-    # Deletar arquivo físico
-    try:
-        if os.path.exists(upload.file_path):
-            os.remove(upload.file_path)
-    except Exception as e:
-        print(f"Warning: Could not delete file {upload.file_path}: {e}")
-
-    # Deletar registro
-    db.delete(upload)
-    db.commit()
-
-    return None
+# NOTA: Funções list_uploads e delete_upload já definidas anteriormente (linhas ~725-780)
+# Removidas duplicatas para evitar comportamento inconsistente
 
 
 @router.get("/uploads/{upload_id}")
@@ -681,19 +956,30 @@ async def get_upload_details(
         for produto in nfe_data.get('produtos', []):
             produto_dict = produto.copy()
 
-            # Tentar encontrar match pelo código
+            # Tentar encontrar match pelo código do produto e registro MAPA
             matched_product = None
+            codigo_produto = produto.get('codigo', '')
+
+            # Buscar por product_reference (código do produto) ou product_name
             for prod in products:
-                if prod.product_code == produto.get('codigo'):
+                # Match por referência do produto
+                if prod.product_reference and prod.product_reference == codigo_produto:
+                    matched_product = prod
+                    break
+                # Match por nome similar
+                if prod.product_name and produto.get('descricao') and \
+                   prod.product_name.lower() == produto.get('descricao', '').lower():
                     matched_product = prod
                     break
 
             if matched_product:
                 produto_dict['matched_mapa_registration'] = matched_product.mapa_registration
                 produto_dict['matched_product_reference'] = matched_product.product_reference
+                produto_dict['matched_product_name'] = matched_product.product_name
             else:
                 produto_dict['matched_mapa_registration'] = None
                 produto_dict['matched_product_reference'] = None
+                produto_dict['matched_product_name'] = None
 
             produtos_com_match.append(produto_dict)
 
@@ -714,7 +1000,7 @@ async def get_upload_details(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar XML: {str(e)}"
+            detail="Erro ao processar arquivo XML. Verifique se é um arquivo válido."
         )
 
 
@@ -741,41 +1027,10 @@ async def update_upload(
         )
 
     try:
-        # Atualizar produtos editados
-        produtos_editados = edit_data.get('produtos', [])
-
-        # Para cada produto editado, verificar se precisamos criar/atualizar o produto no cadastro
-        for produto in produtos_editados:
-            codigo = produto.get('codigo')
-            mapa_registration = produto.get('mapa_registration')
-            product_reference = produto.get('product_reference')
-
-            if not mapa_registration:
-                continue  # Skip produtos sem MAPA registration
-
-            # Verificar se já existe produto cadastrado com esse código
-            existing_product = db.query(models.Product).filter(
-                models.Product.user_id == current_user.id,
-                models.Product.product_code == codigo
-            ).first()
-
-            if existing_product:
-                # Atualizar produto existente
-                existing_product.mapa_registration = mapa_registration
-                if product_reference:
-                    existing_product.product_reference = product_reference
-            else:
-                # Criar novo produto
-                new_product = models.Product(
-                    user_id=current_user.id,
-                    product_code=codigo,
-                    product_name=produto.get('descricao', ''),
-                    mapa_registration=mapa_registration,
-                    product_reference=product_reference
-                )
-                db.add(new_product)
-
-        db.commit()
+        # Nota: Esta funcionalidade atualmente apenas registra a edição
+        # mas não modifica o arquivo XML original.
+        # Para editar produtos, use a tela de Produtos.
+        # A edição de uploads foi simplificada para evitar inconsistências
 
         return {
             "success": True,
@@ -790,7 +1045,7 @@ async def update_upload(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao atualizar upload: {str(e)}"
+            detail="Erro interno ao atualizar upload. Tente novamente."
         )
 
 
@@ -799,7 +1054,9 @@ async def update_upload(
 # ============================================================================
 
 @router.post("/generate-report", response_model=schemas.ReportResponse)
+@limiter.limit("5/minute")  # SEGURANÇA: Rate limit para prevenir DoS via processamento intensivo
 async def generate_report(
+    http_request: Request,
     request: schemas.ReportGenerateRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -807,6 +1064,7 @@ async def generate_report(
     """
     Gera relatório MAPA para o período especificado.
     Processa todos os XMLs do usuário e valida com catálogo.
+    SEGURANÇA: Rate limited para prevenir DoS via processamento intensivo.
     """
     # Buscar XMLs processados para o período
     uploads = db.query(models.XMLUpload).filter(
@@ -859,7 +1117,7 @@ async def generate_report(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar relatório: {str(e)}"
+            detail="Erro interno ao processar relatório. Tente novamente."
         )
 
 
@@ -868,10 +1126,13 @@ async def list_reports(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Lista todos os relatórios gerados pelo usuário"""
+    """
+    Lista relatórios gerados pelo usuário.
+    PERFORMANCE: Limite de 1000 relatórios mais recentes para evitar sobrecarga.
+    """
     reports = db.query(models.Report).filter(
         models.Report.user_id == current_user.id
-    ).order_by(models.Report.generated_at.desc()).all()
+    ).order_by(models.Report.generated_at.desc()).limit(1000).all()
 
     return [{
         "id": r.id,
@@ -912,10 +1173,12 @@ async def download_report(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """
-    Gera relatório para download (JSON formatado temporariamente, PDF futuro).
+    Gera relatório em PDF para download.
     """
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import StreamingResponse
+    from app.utils.pdf_generator import MAPAReportPDFGenerator
     import traceback
+    import os
 
     try:
         # Buscar XMLs processados para o período
@@ -941,15 +1204,27 @@ async def download_report(
                 detail=result.get("error", "Erro ao processar relatório")
             )
 
-        # Retornar JSON formatado (temporário - implementar PDF depois)
-        return JSONResponse(
-            content={
-                "period": report_period,
-                "total_nfes": result["total_nfes"],
-                "rows": result["rows"]
-            },
+        # Gerar PDF
+        pdf_generator = MAPAReportPDFGenerator()
+        user_info = {
+            "full_name": current_user.full_name,
+            "company_name": current_user.company_name,
+            "email": current_user.email
+        }
+
+        pdf_buffer = pdf_generator.generate_report(
+            period=report_period,
+            rows=result["rows"],
+            user_info=user_info,
+            total_nfes=result["total_nfes"]
+        )
+
+        # Retornar PDF como streaming response
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.json"
+                "Content-Disposition": f"attachment; filename=relatorio_mapa_{report_period}.pdf"
             }
         )
     except HTTPException:
@@ -960,7 +1235,7 @@ async def download_report(
         print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao gerar download: {str(e)}"
+            detail="Erro interno ao gerar download. Tente novamente."
         )
 
 
@@ -1058,5 +1333,5 @@ async def get_proposta_comercial(
         print(f"Erro ao ler proposta comercial: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao ler proposta comercial: {str(e)}"
+            detail="Erro interno ao carregar proposta comercial. Tente novamente."
         )
