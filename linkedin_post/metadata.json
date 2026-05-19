@@ -1,0 +1,45 @@
+{
+  "autor": "Rhyan Rocha",
+  "cargo_atual": "Tecnico de TI — Dexian Brasil",
+  "cargo_alvo": "Engenheiro de IA (LLM, agentes, RAG)",
+  "projeto": "Sistema de Relatorio MAPA — Solo Vivo",
+  "periodo_projeto": "fev/2025 a fev/2026",
+  "objetivo_do_post": "Portfólio técnico + posicionamento para transição para AI Engineering",
+  "tamanho_estimado_caracteres": 1820,
+  "hashtags": [
+    "#DocumentAI",
+    "#DataExtraction",
+    "#AIEngineering",
+    "#Automation",
+    "#Python",
+    "#FastAPI",
+    "#RegTech"
+  ],
+  "stack_mencionada_no_post": [
+    "FastAPI",
+    "PostgreSQL",
+    "pdfplumber",
+    "lxml",
+    "openpyxl",
+    "reportlab"
+  ],
+  "stack_completa_do_projeto": [
+    "FastAPI 0.115.0",
+    "PostgreSQL 14+",
+    "SQLAlchemy 2.0.23",
+    "pdfplumber 0.10.3",
+    "lxml 4.9.3",
+    "openpyxl 3.1.2",
+    "reportlab 4.0.7",
+    "Pydantic v2",
+    "python-magic 0.4.27",
+    "slowapi 0.1.9",
+    "python-jose (JWT)",
+    "bcrypt"
+  ],
+  "gancho_ia": "Bloco 'Se eu reconstruísse hoje' — LLM + structured output (Pydantic + function calling) como evolução natural da extração com regex",
+  "melhor_horario_publicacao": "terca a quinta, 08h-10h ou 12h-13h (horario de Brasilia)",
+  "arquivo_post": "post.md",
+  "arquivo_diagrama": "diagram.md",
+  "arquivo_estrategia": "strategy.md"
+}
