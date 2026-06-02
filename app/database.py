@@ -13,15 +13,22 @@ logger = logging.getLogger(__name__)
 
 # Engine SQLAlchemy com tratamento de erro
 try:
-    engine = create_engine(
-        settings.database_url,
-        pool_pre_ping=True,  # Verifica conexão antes de usar
-        pool_size=10,  # PERFORMANCE: Aumentado de 5 para 10 (mais conexões simultâneas)
-        max_overflow=20,  # PERFORMANCE: Aumentado de 10 para 20 (total: 30 conexões)
-        pool_recycle=300,  # PERFORMANCE: Reduzido de 3600 para 300s (5min - menos tempo com conexões stale)
-        pool_timeout=30,  # Timeout de 30s para pegar conexão do pool
-        echo=False  # PERFORMANCE: NUNCA logar queries (mesmo em debug, usar logging.debug se necessário)
-    )
+    _url = settings.database_url
+    if _url.startswith("sqlite"):
+        engine = create_engine(
+            _url,
+            connect_args={"check_same_thread": False},
+        )
+    else:
+        engine = create_engine(
+            _url,
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_recycle=300,
+            pool_timeout=30,
+            echo=False,
+        )
     logger.info("✓ Database engine created successfully")
 except Exception as e:
     logger.error(f"❌ Failed to create database engine: {e}")
