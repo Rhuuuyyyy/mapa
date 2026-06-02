@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Azure
     websites_port: int = 8000
 
+    # Dev only — aceita qualquer credencial e cria admin automaticamente
+    dev_bypass_auth: bool = False
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, v):

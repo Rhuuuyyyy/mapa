@@ -31,8 +31,23 @@ async def login(
     Login para admin ou usuário regular.
     Retorna token JWT.
     """
-    # Autenticar usuário
-    user = auth.authenticate_user(db, form_data.username, form_data.password)
+    # Modo dev: aceita qualquer credencial e cria admin automaticamente
+    if settings.dev_bypass_auth:
+        user = db.query(models.User).filter(models.User.email == form_data.username).first()
+        if not user:
+            user = models.User(
+                email=form_data.username,
+                hashed_password=auth.get_password_hash(form_data.password or "dev"),
+                full_name="Dev Admin",
+                company_name="Dev",
+                is_active=True,
+                is_admin=True,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+    else:
+        user = auth.authenticate_user(db, form_data.username, form_data.password)
 
     if not user:
         raise HTTPException(
