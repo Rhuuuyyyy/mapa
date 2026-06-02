@@ -10,6 +10,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app import models, schemas, auth
+from app.config import settings
 from app.database import get_db
 
 router = APIRouter()
