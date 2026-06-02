@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Azure
     websites_port: int = 8000
 
+    # Dev only — aceita qualquer credencial e cria admin automaticamente
+    dev_bypass_auth: bool = False
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, v):
@@ -43,16 +46,29 @@ class Settings(BaseSettings):
         Converte ALLOWED_ORIGINS de string para lista.
         Sempre inclui localhost:3000 para desenvolvimento.
         Aceita:
-        - "*" -> ["*"]
+        - "*" -> ["*"] (APENAS em modo DEBUG)
         - "url1,url2" -> ["url1", "url2"]
         - ["url1", "url2"] -> ["url1", "url2"]
+
+        SEGURANÇA: Wildcard "*" só é permitido em modo debug.
         """
+        import os
+
         # Lista base com localhost para desenvolvimento
         allowed = ["http://localhost:3000"]
 
         if isinstance(v, str):
-            # Se for asterisco, permite todas as origens
+            # SEGURANÇA: Wildcard só é permitido em modo debug
             if v.strip() == "*":
+                debug_mode = os.getenv("DEBUG", "false").lower() == "true"
+                if not debug_mode:
+                    import logging
+                    logging.warning(
+                        "SEGURANÇA: ALLOWED_ORIGINS='*' ignorado em produção. "
+                        "Configure origens específicas ou habilite DEBUG=true."
+                    )
+                    # Em produção, usar apenas localhost (desenvolvimento será feito localmente)
+                    return ["http://localhost:3000"]
                 return ["*"]
             # Se contém vírgulas, divide e adiciona
             if "," in v:
@@ -73,7 +89,7 @@ class Settings(BaseSettings):
                 seen.add(origin)
                 unique_origins.append(origin)
 
-        return unique_origins if unique_origins else ["*"]
+        return unique_origins if unique_origins else ["http://localhost:3000"]
 
     model_config = SettingsConfigDict(
         env_file=".env",

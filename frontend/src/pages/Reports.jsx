@@ -13,6 +13,8 @@ import {
   Eye
 } from 'lucide-react';
 import { reports as reportsAPI } from '../services/api';
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
 
 const Reports = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('');
@@ -22,6 +24,8 @@ const Reports = () => {
   const [error, setError] = useState(null);
   const [reportHistory, setReportHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, reportId: null });
+  const [alertDialog, setAlertDialog] = useState({ show: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadReportHistory();
@@ -207,15 +211,30 @@ const Reports = () => {
   };
 
   const handleDeleteReport = async (reportId) => {
-    if (!window.confirm('Tem certeza que deseja excluir este relatório?')) {
-      return;
-    }
+    setConfirmDelete({ show: true, reportId });
+  };
+
+  const confirmDeleteAction = async () => {
+    const reportId = confirmDelete.reportId;
+    setConfirmDelete({ show: false, reportId: null });
 
     try {
       await reportsAPI.delete(reportId);
       loadReportHistory();
+      setAlertDialog({
+        show: true,
+        title: 'Relatório excluído',
+        message: 'O relatório foi excluído com sucesso.',
+        type: 'success'
+      });
     } catch (err) {
-      alert('Erro ao excluir relatório');
+      console.error('Erro ao excluir relatório:', err);
+      setAlertDialog({
+        show: true,
+        title: 'Erro ao excluir',
+        message: 'Não foi possível excluir o relatório. Tente novamente.',
+        type: 'error'
+      });
     }
   };
 
@@ -271,7 +290,7 @@ const Reports = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="card">
             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-              <FileText className="w-5 h-5 mr-2 text-emerald-600" />
+              <FileText className="w-5 h-5 mr-2 text-sky-600" />
               Gerar Novo Relatório
             </h2>
 
@@ -302,16 +321,16 @@ const Reports = () => {
               </div>
 
               {periodInfo && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-emerald-900 mb-2">Período Selecionado</h3>
+                <div className="bg-sky-50 border border-sky-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-sky-900 mb-2">Período Selecionado</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-emerald-700 font-medium">Trimestre:</span>
-                      <p className="text-emerald-900">{periodInfo.quarter}º de {periodInfo.year}</p>
+                      <span className="text-sky-700 font-medium">Trimestre:</span>
+                      <p className="text-sky-900">{periodInfo.quarter}º de {periodInfo.year}</p>
                     </div>
                     <div>
-                      <span className="text-emerald-700 font-medium">Meses:</span>
-                      <p className="text-emerald-900">{periodInfo.startMonth} - {periodInfo.endMonth}</p>
+                      <span className="text-sky-700 font-medium">Meses:</span>
+                      <p className="text-sky-900">{periodInfo.startMonth} - {periodInfo.endMonth}</p>
                     </div>
                   </div>
                 </div>
@@ -328,11 +347,11 @@ const Reports = () => {
 
               {result && result.data && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start space-x-2">
-                    <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg flex items-start space-x-2">
+                    <CheckCircle className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="text-sm text-emerald-800 font-medium">{result.message}</p>
-                      <div className="mt-2 flex items-center space-x-4 text-sm text-emerald-700">
+                      <p className="text-sm text-sky-800 font-medium">{result.message}</p>
+                      <div className="mt-2 flex items-center space-x-4 text-sm text-sky-700">
                         <div className="flex items-center">
                           <FileText className="w-4 h-4 mr-1" />
                           <span>{result.data.total_nfes} NF-es processadas</span>
@@ -381,7 +400,7 @@ const Reports = () => {
                 <button
                   onClick={handleGenerate}
                   disabled={!selectedPeriod || generating}
-                  className="btn-primary flex-1"
+                  className="btn-primary flex-1 flex items-center justify-center"
                 >
                   {generating ? (
                     <>
@@ -398,7 +417,7 @@ const Reports = () => {
                 <button
                   onClick={handleDownload}
                   disabled={!selectedPeriod || downloading}
-                  className="btn-secondary flex-1"
+                  className="btn-secondary flex-1 flex items-center justify-center"
                 >
                   {downloading ? (
                     <>
@@ -444,13 +463,13 @@ const Reports = () => {
           <div className="card">
             <h3 className="font-semibold text-gray-900 mb-4">Estatísticas Rápidas</h3>
             <div className="space-y-4">
-              <div className="p-4 bg-emerald-50 rounded-lg">
+              <div className="p-4 bg-sky-50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-emerald-700 font-medium">Empresas</span>
-                  <Building2 className="w-5 h-5 text-emerald-600" />
+                  <span className="text-sm text-sky-700 font-medium">Empresas</span>
+                  <Building2 className="w-5 h-5 text-sky-600" />
                 </div>
-                <p className="text-2xl font-bold text-emerald-900">-</p>
-                <p className="text-xs text-emerald-600 mt-1">Cadastradas no sistema</p>
+                <p className="text-2xl font-bold text-sky-900">-</p>
+                <p className="text-xs text-sky-600 mt-1">Cadastradas no sistema</p>
               </div>
 
               <div className="p-4 bg-blue-50 rounded-lg">
@@ -477,8 +496,8 @@ const Reports = () => {
             <h3 className="font-semibold text-gray-900 mb-3">Prazos de Envio</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-start space-x-2">
-                <div className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-emerald-700 font-bold text-xs">1º</span>
+                <div className="w-6 h-6 bg-sky-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sky-700 font-bold text-xs">1º</span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">1º Trimestre</p>
@@ -486,8 +505,8 @@ const Reports = () => {
                 </div>
               </div>
               <div className="flex items-start space-x-2">
-                <div className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-emerald-700 font-bold text-xs">2º</span>
+                <div className="w-6 h-6 bg-sky-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sky-700 font-bold text-xs">2º</span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">2º Trimestre</p>
@@ -495,8 +514,8 @@ const Reports = () => {
                 </div>
               </div>
               <div className="flex items-start space-x-2">
-                <div className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-emerald-700 font-bold text-xs">3º</span>
+                <div className="w-6 h-6 bg-sky-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sky-700 font-bold text-xs">3º</span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">3º Trimestre</p>
@@ -504,8 +523,8 @@ const Reports = () => {
                 </div>
               </div>
               <div className="flex items-start space-x-2">
-                <div className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-emerald-700 font-bold text-xs">4º</span>
+                <div className="w-6 h-6 bg-sky-100 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sky-700 font-bold text-xs">4º</span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">4º Trimestre</p>
@@ -523,7 +542,7 @@ const Reports = () => {
 
         {loadingHistory ? (
           <div className="text-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-2" />
+            <Loader2 className="w-8 h-8 animate-spin text-sky-600 mx-auto mb-2" />
             <p className="text-sm text-gray-600">Carregando histórico...</p>
           </div>
         ) : reportHistory.length === 0 ? (
@@ -546,7 +565,7 @@ const Reports = () => {
                   <tr key={report.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-emerald-600" />
+                        <FileText className="w-4 h-4 text-sky-600" />
                         <span className="font-medium text-gray-900">{report.report_period}</span>
                       </div>
                     </td>
@@ -560,10 +579,10 @@ const Reports = () => {
                             setSelectedPeriod(report.report_period);
                             handleGenerate();
                           }}
-                          className="p-2 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-2 hover:bg-sky-50 rounded-lg transition-colors"
                           title="Visualizar"
                         >
-                          <Eye className="w-4 h-4 text-emerald-600" />
+                          <Eye className="w-4 h-4 text-sky-600" />
                         </button>
                         <button
                           onClick={() => handleDeleteReport(report.id)}
@@ -581,6 +600,26 @@ const Reports = () => {
           </div>
         )}
       </div>
+
+      {/* Modais customizados */}
+      <ConfirmDialog
+        isOpen={confirmDelete.show}
+        title="Confirmar exclusão"
+        message="Tem certeza que deseja excluir este relatório?"
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ show: false, reportId: null })}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.show}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ show: false, title: '', message: '', type: 'info' })}
+      />
     </div>
   );
 };

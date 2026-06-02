@@ -3,8 +3,12 @@ Validadores de segurança para uploads de arquivos.
 Valida extensão, MIME type, magic numbers e tamanho.
 """
 
+import logging
+import os
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Import lazy de magic para evitar falha se libmagic não estiver instalado
 try:
@@ -12,7 +16,7 @@ try:
     MAGIC_AVAILABLE = True
 except ImportError:
     MAGIC_AVAILABLE = False
-    print("⚠️ python-magic not available, MIME type validation will be skipped")
+    logger.warning("⚠️ python-magic não disponível - validação MIME será limitada")
 
 
 ALLOWED_EXTENSIONS = {"xml", "pdf"}
@@ -62,10 +66,23 @@ def validate_file_extension(filename: str) -> str:
 
 def validate_mime_type(content: bytes) -> str:
     """
-    Valida MIME type usando python-magic (se disponível).
+    Valida MIME type usando python-magic.
+    SEGURANÇA: Em produção, esta validação é obrigatória.
     """
     if not MAGIC_AVAILABLE:
-        # Se magic não está disponível, pular validação MIME
+        # SEGURANÇA: Em produção, não permitir bypass da validação MIME
+        debug_mode = os.getenv("DEBUG", "false").lower() == "true"
+        if not debug_mode:
+            logger.error(
+                "SEGURANÇA: python-magic não está disponível. "
+                "Instale libmagic: apt-get install libmagic1"
+            )
+            raise ValueError(
+                "Validação de tipo de arquivo não disponível. "
+                "Contate o administrador do sistema."
+            )
+        # Em desenvolvimento, permite bypass com aviso
+        logger.warning("SEGURANÇA: Validação MIME ignorada em modo DEBUG")
         return "application/octet-stream"
 
     try:
@@ -79,8 +96,11 @@ def validate_mime_type(content: bytes) -> str:
 
         return mime
 
+    except ValueError:
+        raise  # Re-raise validation errors
     except Exception as e:
-        raise ValueError(f"Erro ao detectar tipo do arquivo: {str(e)}")
+        logger.exception("Erro ao detectar tipo do arquivo")
+        raise ValueError("Erro ao validar tipo do arquivo")
 
 
 def validate_magic_numbers(content: bytes, extension: str) -> bool:

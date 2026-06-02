@@ -4,9 +4,12 @@ Startup não-bloqueante, CORS configurado, routers organizados.
 """
 
 import logging
-from fastapi import FastAPI
+import os
+from pathlib import Path
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -49,9 +52,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Montar arquivos estáticos e templates
+
+# ============================================================================
+# SEGURANÇA: Middleware para adicionar headers de segurança
+# ============================================================================
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """
+    Adiciona headers de segurança em todas as respostas.
+    Segue recomendações OWASP para proteção contra ataques comuns.
+    """
+    response = await call_next(request)
+
+    # Previne MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+
+    # Proteção contra clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+
+    # Ativa filtro XSS do navegador (browsers antigos)
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+
+    # Controle de referrer para privacidade
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Desabilita cache para respostas de API (endpoints /api/*)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+
+    # Content Security Policy (CSP) - configuração básica
+    # Nota: Ajustar conforme necessidade do frontend
+    if not settings.debug:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
+            "connect-src 'self' https:; "
+            "frame-ancestors 'none'"
+        )
+
+    return response
+
+
+# Montar arquivos estáticos e templates do backend antigo
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Montar frontend React (se existir a pasta dist)
+frontend_dist = Path("frontend/dist")
+if frontend_dist.exists() and frontend_dist.is_dir():
+    # Servir assets do React (JS, CSS, imagens, etc)
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="react-assets")
+    logger.info("✓ React frontend mounted at /assets")
 
 # Incluir routers
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
@@ -96,16 +152,6 @@ async def shutdown_event():
 # ROOT ENDPOINTS
 # ============================================================================
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {
-        "app": settings.app_name,
-        "version": settings.app_version,
-        "status": "running"
-    }
-
-
 @app.get("/health")
 async def health_check():
     """
@@ -117,3 +163,43 @@ async def health_check():
         "app": settings.app_name,
         "version": settings.app_version
     }
+
+
+@app.get("/api")
+async def api_root():
+    """API info endpoint"""
+    return {
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "status": "running",
+        "docs": "/api/docs",
+        "redoc": "/api/redoc"
+    }
+
+
+# ============================================================================
+# REACT FRONTEND - CATCH-ALL ROUTE
+# ============================================================================
+
+@app.get("/{full_path:path}")
+async def serve_react_app(request: Request, full_path: str):
+    """
+    Catch-all route para servir o React app.
+    Serve index.html para todas as rotas não encontradas (suporte ao React Router).
+    Rotas da API (/api/*) já foram tratadas pelos routers acima.
+    """
+    frontend_dist = Path("frontend/dist")
+    index_file = frontend_dist / "index.html"
+
+    # Se a pasta dist existe e tem index.html, serve o React app
+    if frontend_dist.exists() and index_file.exists():
+        # Se a rota solicita um arquivo específico (ex: favicon.ico), tenta servir
+        file_path = frontend_dist / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+
+        # Caso contrário, serve o index.html (suporte ao React Router)
+        return FileResponse(index_file)
+
+    # Fallback: se não tem React build, retorna 404
+    return {"detail": "Frontend not built. Run 'npm run build' in frontend directory."}
