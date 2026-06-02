@@ -135,6 +135,9 @@ def setup_env():
 
     # modo dev por padrão no run.py local
     env_content = env_content.replace("DEBUG=False", "DEBUG=True")
+
+    # bypass de autenticação para uso local
+    env_content += "\n# Aceita qualquer credencial em modo local (nunca use em produção!)\nDEV_BYPASS_AUTH=true\n"
     env_content = env_content.replace(
         "ALLOWED_ORIGINS=https://seu-dominio.com,https://www.seu-dominio.com",
         "ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000"
