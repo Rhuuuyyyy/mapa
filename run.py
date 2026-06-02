@@ -113,42 +113,100 @@ def install_python_deps():
 
 # ─── .env ─────────────────────────────────────────────────────────────────────
 
+SQLITE_URL = "sqlite:///./mapa_local.db"
+
+
+def _postgres_reachable(url: str) -> bool:
+    """Testa se o PostgreSQL está acessível."""
+    try:
+        import re
+        m = re.match(r"postgresql.*://[^:]+:[^@]*@([^:/]+):?(\d+)?/", url)
+        if not m:
+            return False
+        host = m.group(1)
+        port = int(m.group(2) or 5432)
+        import socket
+        s = socket.create_connection((host, port), timeout=2)
+        s.close()
+        return True
+    except Exception:
+        return False
+
+
+def _env_get(key: str) -> str:
+    """Lê um valor do .env sem carregar o módulo app."""
+    for line in ENV_FILE.read_text().splitlines():
+        line = line.strip()
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1].strip()
+    return ""
+
+
+def _env_set(key: str, value: str):
+    """Substitui ou acrescenta KEY=value no .env."""
+    content = ENV_FILE.read_text()
+    lines = content.splitlines()
+    new_lines = []
+    found = False
+    for line in lines:
+        if line.strip().startswith(f"{key}="):
+            new_lines.append(f"{key}={value}")
+            found = True
+        else:
+            new_lines.append(line)
+    if not found:
+        new_lines.append(f"{key}={value}")
+    ENV_FILE.write_text("\n".join(new_lines) + "\n")
+
+
 def setup_env():
     step("Configurando arquivo .env")
-    if ENV_FILE.exists():
-        ok(".env já existe — mantendo configuração atual")
+
+    if not ENV_FILE.exists():
+        if not ENV_EXAMPLE.exists():
+            warn(".env.example não encontrado, pulando")
+            return
+
+        import secrets
+        env_content = ENV_EXAMPLE.read_text()
+
+        secret_key = secrets.token_urlsafe(64)
+        env_content = env_content.replace(
+            "GERE_UMA_CHAVE_SEGURA_COM_O_COMANDO_ACIMA",
+            secret_key
+        )
+        env_content = env_content.replace("DEBUG=False", "DEBUG=True")
+        env_content = env_content.replace(
+            "ALLOWED_ORIGINS=https://seu-dominio.com,https://www.seu-dominio.com",
+            "ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000"
+        )
+        env_content = env_content.replace(
+            "DATABASE_URL=postgresql://user:SENHA_FORTE_AQUI@localhost:5432/mapa_db",
+            f"DATABASE_URL={SQLITE_URL}"
+        )
+        env_content += "\n# Aceita qualquer credencial em modo local (nunca use em produção!)\nDEV_BYPASS_AUTH=true\n"
+
+        ENV_FILE.write_text(env_content)
+        ok(f".env criado com SQLite local ({SQLITE_URL})")
         return
 
-    if not ENV_EXAMPLE.exists():
-        warn(".env.example não encontrado, pulando")
-        return
+    ok(".env já existe")
 
-    import secrets
-    env_content = ENV_EXAMPLE.read_text()
+    # Garante DEV_BYPASS_AUTH=true
+    if "DEV_BYPASS_AUTH" not in ENV_FILE.read_text():
+        _env_set("DEV_BYPASS_AUTH", "true")
+        ok("DEV_BYPASS_AUTH=true adicionado ao .env")
 
-    # gera SECRET_KEY segura automaticamente
-    secret_key = secrets.token_urlsafe(64)
-    env_content = env_content.replace(
-        "GERE_UMA_CHAVE_SEGURA_COM_O_COMANDO_ACIMA",
-        secret_key
-    )
-
-    # modo dev por padrão no run.py local
-    env_content = env_content.replace("DEBUG=False", "DEBUG=True")
-
-    # bypass de autenticação para uso local
-    env_content += "\n# Aceita qualquer credencial em modo local (nunca use em produção!)\nDEV_BYPASS_AUTH=true\n"
-    env_content = env_content.replace(
-        "ALLOWED_ORIGINS=https://seu-dominio.com,https://www.seu-dominio.com",
-        "ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000"
-    )
-
-    ENV_FILE.write_text(env_content)
-    ok(".env criado a partir de .env.example")
-    warn("Edite o .env e configure DATABASE_URL antes de continuar (se usar PostgreSQL)")
-    print()
-    print("  Dica rápida para SQLite local: adicione ao .env")
-    print("    DATABASE_URL=sqlite:///./mapa_local.db")
+    # Se DATABASE_URL aponta para Postgres e ele não responde, troca para SQLite
+    db_url = _env_get("DATABASE_URL")
+    if db_url.startswith("postgresql") or db_url.startswith("postgres"):
+        print("  Testando conexão com PostgreSQL...")
+        if _postgres_reachable(db_url):
+            ok("PostgreSQL acessível")
+        else:
+            warn("PostgreSQL não encontrado — usando SQLite local")
+            _env_set("DATABASE_URL", SQLITE_URL)
+            ok(f"DATABASE_URL trocado para {SQLITE_URL}")
 
 
 # ─── frontend ─────────────────────────────────────────────────────────────────
